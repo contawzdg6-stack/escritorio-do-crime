@@ -8,7 +8,7 @@
 .stage[data-environment="gaming"]{background:linear-gradient(#101d31,#25364c 55%,#343d3b)}
 .stage[data-environment="lounge"]{background:linear-gradient(#92a5b0,#e0bd8c 60%,#717d72)}
 .stage:after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 45%,#0d211724);pointer-events:none;z-index:1}
-#scene{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#scene{position:absolute;inset:0;width:100%;height:100%;touch-action:none;z-index:1}
 .stage-top,.camera-controls,.scene-legend,.room-bottom,.touch-pad,#avatar-labels,.canvas-error{z-index:3}
 .room-badge,.live-pill,.camera-controls,.reactions,.movement-hint{background:#11241cd4;backdrop-filter:blur(16px);border-color:#f2efd52b}
 .avatar-label{font-size:10px;border-radius:20px;padding:6px 11px;background:#10231ad9;border-color:#f5ebcb40;box-shadow:0 5px 15px #0003}
@@ -47,14 +47,14 @@
 @media(max-width:1100px){.in-call .world-caption{bottom:130px}.in-call .voice-bar{gap:10px}.in-call .movement-hint{display:none}.in-call .touch-pad{bottom:112px}}
 @media(max-width:720px){.in-call .workspace{inset:38px 0 0}.in-call .stage{height:100%}.in-call .stage-top{left:14px;top:15px}.in-call .room-badge{font-size:10px;padding:12px}.in-call .live-pill{display:none}.in-call .scene-legend{left:16px;top:65px;font-size:7px}.in-call .world-actions{right:14px;top:15px}.world-actions button{padding:11px}.world-actions button span:not([data-icon]){display:none}.in-call .camera-controls{right:14px;top:73px}.in-call .voice-bar{bottom:12px;max-width:calc(100% - 20px);width:calc(100% - 20px);padding:7px;border-radius:14px;flex-direction:column;gap:2px}.in-call .voice-info{justify-content:center;padding:4px;min-width:0}.in-call .voice-info div{display:flex;gap:9px}.in-call .voice-info>svg{display:none}.in-call .call-controls{gap:3px;width:100%;justify-content:space-evenly}.in-call .control{padding:7px}.in-call .leave{font-size:9px}.in-call .world-caption{bottom:230px;left:18px}.world-caption b{font-size:15px}.world-caption span{font-size:7px}.in-call .touch-pad{left:16px;bottom:127px}.in-call .conversation{right:10px;bottom:125px;width:calc(100% - 20px);height:300px}.in-call .sidebar.open{inset:38px auto 0 0}.in-call .room-bottom{display:none}}
 
-#world-media-plane{position:absolute;top:0;left:0;width:960px;height:540px;transform-origin:0 0;z-index:2;overflow:hidden;background:#030806;backface-visibility:hidden}
+#world-media-plane{position:absolute;top:0;left:0;width:960px;height:540px;transform-origin:0 0;z-index:0;overflow:hidden;background:#030806;backface-visibility:hidden;pointer-events:none}
 #world-media-plane iframe,#world-media-plane video,#stage-youtube{display:block;width:960px;height:540px;border:0;object-fit:contain}
 .media-console{display:none}
 .in-call.media-open .media-console,.in-call.screen-focused .media-console{display:block;position:absolute;right:24px;top:98px;z-index:31;width:310px;max-height:calc(100% - 210px);overflow:auto;padding:20px;border:1px solid #ebe6cd35;border-radius:16px;background:#10231bf5;box-shadow:0 20px 70px #001c;backdrop-filter:blur(20px)}
 .media-console-head{display:flex;align-items:center;justify-content:space-between;gap:15px}.media-console-head b{font-size:16px}.media-console-head button{font-size:24px}
 .media-console p{font-size:11px;color:#c5ccbc;line-height:1.65}.media-console label{font-size:11px;display:block;margin:18px 0 8px}.media-console input{background:#ffffff0d;border:1px solid #d7dfbd35;color:#f7f4dd;padding:11px;border-radius:8px;width:100%;font-size:11px}.media-console .primary{width:100%;justify-content:center;padding:12px;margin-top:10px;font-size:12px}
 .media-tools{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:14px 0}.media-tools button{border:1px solid #f4edc626;background:#eff8d30b;font-size:10px;padding:11px 6px;border-radius:7px}.media-tools button:hover{background:#ddebaf20}.media-console small{font-size:10px;color:#b2c0a7;line-height:1.6}.media-console #media-error{color:#f5b9a5}.media-preview-note{border-top:1px solid #ffffff1f;padding-top:10px;font-size:9px!important;color:#9eaa96!important}
-.screen-focused #world-media-plane{position:fixed;visibility:visible!important;left:50%;top:45%;width:min(92vw,960px);height:auto;aspect-ratio:16/9;transform:translate(-50%,-50%)!important;z-index:25;box-shadow:0 0 0 100vmax #07130dec;border-radius:8px}
+.screen-focused #world-media-plane{position:fixed;visibility:visible!important;left:50%;top:45%;width:min(92vw,960px);height:auto;aspect-ratio:16/9;transform:translate(-50%,-50%)!important;z-index:25;pointer-events:auto;box-shadow:0 0 0 100vmax #07130dec;border-radius:8px}
 .screen-focused #world-media-plane iframe,.screen-focused #world-media-plane video,.screen-focused #stage-youtube{width:100%;height:100%;position:absolute;inset:0}
 .in-call.screen-focused .media-console{top:auto;bottom:100px;right:24px;max-height:220px;width:310px}.in-call.screen-focused .media-console form,.in-call.screen-focused .media-console small,.in-call.screen-focused .media-preview-note{display:none}
 @media(max-width:720px){.in-call.media-open .media-console,.in-call.screen-focused .media-console{left:12px;right:12px;top:75px;width:auto;max-height:calc(100% - 215px);padding:17px}.in-call.screen-focused .media-console{top:auto;bottom:125px;max-height:210px}.screen-focused #world-media-plane{top:33%;width:96vw}}
@@ -89,7 +89,7 @@ dialog.avatar-dialog{width:850px;max-width:calc(100vw - 28px);max-height:92dvh;p
 @media(max-width:650px){dialog.avatar-dialog{padding:22px 17px;max-height:94dvh}.avatar-editor{grid-template-columns:1fr;gap:20px}.avatar-preview{position:relative;height:300px}.avatar-dialog h2{font-size:25px}.avatar-field-grid{gap:12px}.avatar-save{position:sticky;bottom:-22px;background:#14211df5;padding:12px 0}.avatar-color-grid{gap:8px}.avatar-color input{width:26px!important}}
 
 
-.avatar-real-layer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;pointer-events:none!important;z-index:1}.avatar-face{border:1px solid #d2dcb927;border-radius:8px;margin-top:16px;padding:12px}.avatar-face summary{font-size:11px;cursor:pointer;color:#d5dfc8}.avatar-face[open] summary{margin-bottom:16px}.avatar-editor .avatar-slider{margin:0;font-size:10px;color:#c9d2c0}.avatar-slider input[type=range]{width:100%;padding:0;height:22px;accent-color:#d5ddb6;border:0;background:none;margin-top:8px}
+.avatar-real-layer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;pointer-events:none!important;z-index:2}.avatar-face{border:1px solid #d2dcb927;border-radius:8px;margin-top:16px;padding:12px}.avatar-face summary{font-size:11px;cursor:pointer;color:#d5dfc8}.avatar-face[open] summary{margin-bottom:16px}.avatar-editor .avatar-slider{margin:0;font-size:10px;color:#c9d2c0}.avatar-slider input[type=range]{width:100%;padding:0;height:22px;accent-color:#d5ddb6;border:0;background:none;margin-top:8px}
 
 .avatar-camera-toggle{position:absolute;right:15px;top:17px;font-size:10px;border:1px solid #e4e6c34d;border-radius:20px;padding:7px 10px;background:#19352bdd;color:#e5e8cd}.avatar-preview-caption{padding:16px 10px 12px}.avatar-preview-caption b{font-size:16px}.avatar-preview-caption span{margin-top:5px}
 
@@ -117,7 +117,7 @@ dialog.avatar-dialog{width:850px;max-width:calc(100vw - 28px);max-height:92dvh;p
 <header class="topbar"><button class="mobile-menu tiny" data-action="menu" title="Abrir canais" data-icon="menu"></button><div class="breadcrumb"><span data-icon="building"></span><span>Escritório do Crime</span><i>/</i><b id="breadcrumb">Visão geral</b></div><div class="top-actions"><span class="private-tag"><span data-icon="lock"></span>Só os de casa</span><button class="tiny" data-action="fullscreen" title="Tela cheia" data-icon="expand"></button></div></header>
 <div class="content-head"><div><div class="eyebrow" id="eyebrow">BEM-VINDO À FIRMA</div><h2 id="heading">O expediente mais esperado do dia<span>.</span></h2><p id="subheading">Puxa uma cadeira. A resenha começa aqui.</p></div><div class="online-chip"><i class="green-dot"></i><span id="online-count">Conectando…</span></div></div>
 <div class="workspace">
-<section class="stage" aria-label="Escritório 3D"><canvas id="scene" aria-label="Ambiente 3D interativo. Clique no chão, use as setas ou WASD para andar. Shift para correr, Espaço para pular. Arraste para olhar."></canvas><div id="avatar-labels"></div><div id="world-media-plane" hidden><div id="stage-youtube" hidden><div id="stage-youtube-player"></div></div><video id="stage-video" autoplay playsinline muted hidden></video></div><div class="world-actions"><button data-action="coast" aria-label="Ver a praia" title="Virar a câmera para a praia" aria-pressed="false"><span class="coast-symbol" aria-hidden="true">☀</span><span id="coast-label">Praia</span></button><button data-action="media" aria-label="Telão e música"><span data-icon="volume"></span><span>Telão & música</span></button><button data-action="menu" aria-label="Escolher cenário"><span data-icon="menu"></span><span>Cenários</span></button><button data-action="chat" aria-label="Abrir conversa"><span data-icon="chat"></span><span>Conversa</span></button></div><aside class="media-console" aria-label="Controles do telão"><div class="media-console-head"><b>O baile é da firma.</b><button data-action="media" aria-label="Fechar controles do telão">×</button></div><p id="media-status">Telão livre · escolha um vídeo ou transmita a tela</p><form id="youtube-form"><label for="youtube-link">Link do YouTube</label><input id="youtube-link" placeholder="Cole o link do vídeo ou da música" required><button type="submit" class="primary">Tocar no telão</button><p id="media-error" role="alert"></p></form><div class="media-tools"><button data-action="media-share">Compartilhar tela</button><button data-action="media-pause">Pausar / continuar</button><button data-action="media-sound">Ativar som</button><button data-action="media-mute">Silenciar</button><button data-action="media-focus">Ampliar / voltar</button><button data-action="media-stop">Encerrar telão</button></div><p id="media-volume" role="status">Som do telão: 0%</p><small>Perto do baile, som mais alto. Longe, mais baixo.</small><p class="media-preview-note">Prévia: vídeo e tela aparecem neste navegador. Assistir junto depende do servidor.</p></aside><div class="world-caption"><span>RIO DE JANEIRO</span><b>O morro tem histórias.<br>Essa aqui é nossa.</b></div>
+<section class="stage" aria-label="Escritório 3D"><canvas id="scene" aria-label="Ambiente 3D interativo. Clique no chão, use as setas ou WASD para andar. Shift para correr, Espaço para pular. Arraste para olhar."></canvas><div id="avatar-labels"></div><div id="world-media-plane" hidden><div id="stage-youtube" hidden><div id="stage-youtube-player"></div></div><video id="stage-video" autoplay playsinline muted hidden></video></div><div class="world-actions"><button data-action="coast" aria-label="Ver a praia" title="Virar a câmera para a praia" aria-pressed="false"><span class="coast-symbol" aria-hidden="true">☀</span><span id="coast-label">Praia</span></button><button data-action="media" aria-label="Telão e música"><span data-icon="volume"></span><span>Telão & música</span></button><button data-action="menu" aria-label="Escolher cenário"><span data-icon="menu"></span><span>Cenários</span></button><button data-action="chat" aria-label="Abrir conversa"><span data-icon="chat"></span><span>Conversa</span></button></div><aside class="media-console" aria-label="Controles do telão"><div class="media-console-head"><b>O baile é da firma.</b><button data-action="media" aria-label="Fechar controles do telão">×</button></div><p id="media-status">Telão livre · escolha um vídeo ou transmita a tela</p><form id="youtube-form"><label for="youtube-link">Link do YouTube</label><input id="youtube-link" placeholder="Cole o link do vídeo ou da música" required><button type="submit" class="primary">Tocar no telão</button><p id="media-error" role="alert"></p></form><div class="media-tools"><button data-action="media-share">Compartilhar tela</button><button data-action="media-pause">Pausar / continuar</button><button data-action="media-sound">Ativar som</button><button data-action="media-mute">Silenciar</button><button data-action="media-focus">Ampliar / voltar</button><button data-action="media-stop">Encerrar telão</button></div><p id="media-volume" role="status">Som do telão: 0%</p><small id="media-spatial-note">Mais longe, bem mais baixo. Na praia, quase silêncio.</small><p class="media-preview-note">Prévia: vídeo e tela aparecem neste navegador. Assistir junto depende do servidor.</p></aside><div class="world-caption"><span>RIO DE JANEIRO</span><b>O morro tem histórias.<br>Essa aqui é nossa.</b></div>
 <div class="stage-top"><div class="room-badge"><span data-icon="cube"></span><span id="scene-name">Praça da Resenha</span><i>3D</i></div><div class="live-pill"><span class="green-dot"></span><span id="scene-status">EXPLORE O ESPAÇO</span></div></div>
 <div class="scene-legend"><span class="legend-dot"></span>RIO DE JANEIRO <i>·</i> <span id="clock">00:00</span></div>
 <button class="seat-action" data-action="seat">Ir até um banco · E</button><div class="camera-modes" role="group" aria-label="Visão da câmera"><button type="button" data-camera-mode="first" aria-pressed="false">1ª pessoa</button><button type="button" data-camera-mode="third" aria-pressed="false">3ª pessoa</button><button type="button" data-camera-mode="overhead" aria-pressed="true">Do alto</button></div><div class="camera-look-hint"><b id="movement-state">Parado</b> · WASD / setas · Shift corre · Espaço pula · Arraste para olhar · V câmera</div><div class="first-person-dot" aria-hidden="true"></div><div class="camera-controls"><button title="Aproximar" data-action="zoom-in" data-icon="plus"></button><button title="Afastar" data-action="zoom-out" data-icon="minus"></button><button title="Redefinir câmera" data-action="reset-camera" data-icon="rotate"></button></div>
@@ -628,12 +628,12 @@ function buildWorld(scene,Mesh){
 
  const graffiti=(x,y,z,w,h,text,tag,bg='#8b887b')=>{const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;const c=canvas.getContext('2d');c.fillStyle=bg;c.fillRect(0,0,1024,512);const rnd=rng(45);for(let i=0;i<6000;i++){c.fillStyle=rnd()>.5?'#ffffff12':'#00000012';c.fillRect(rnd()*1024,rnd()*512,rnd()*5+1,rnd()*7+1)}c.save();c.translate(510,205);c.rotate(-.045);c.textAlign='center';c.font='italic 900 158px Arial';c.lineJoin='round';c.strokeStyle='#202b2b';c.lineWidth=26;c.strokeText(text,0,0,920);c.strokeStyle='#d8c99a';c.lineWidth=12;c.strokeText(text,0,0,920);c.fillStyle='#b1c9a2';c.fillText(text,0,0,920);c.restore();c.font='italic 700 46px Arial';c.textAlign='center';c.fillStyle='#243d38';c.fillText(tag,512,332,930);c.font='italic 22px Arial';c.fillStyle='#283733';c.fillText('021  /  EDC CREW',795,450);for(let i=0;i<18;i++){c.fillStyle='#233b3333';c.fillRect(120+rnd()*780,215,1+rnd()*3,15+rnd()*60)}const mesh=new Mesh();mesh.quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],'#ffffff',[0,0,1],0);scene.addBatch(mesh,'solid',canvas)};
  const stage=(x,z,w=7.2,h=4.05,bottom=2.1)=>{
-  scene.screen={x,z:z+.13,w,h,bottom};
+  scene.screen={x,z:z+.145,w,h,bottom};
   concrete.box(x,.18,z+.5,w+2.4,.35,2.6,'#646e68');m.box(x,bottom+h/2,z,w+.25,h+.25,.22,'#172821');m.box(x,bottom+h/2,z+.12,w,h,.025,'#090f12');
   for(const side of [-1,1]){const sx=x+side*(w/2+.65);m.link([sx,.1,z],[sx,bottom+h+.3,z],.055,.055,'#9da79d',10);for(let y=.2;y<bottom+h;y+=.7){m.link([sx-.17,y,z],[sx+.17,y+.7,z],.015,.015,'#849187',6)}m.box(sx,1.35,z+.9,1,2.6,1.1,'#202723');for(const y of [.7,1.8]){m.link([sx,y,z+1.45],[sx,y,z+1.49],.34,.34,'#111916',24);m.link([sx,y,z+1.5],[sx,y,z+1.51],.17,.17,'#38433b',24)}m.box(sx,bottom+h+.14,z+.16,.3,.13,.2,side<0?'#b4e9ba':'#b8beef',0,1)}
   m.link([x-w/2-.65,bottom+h+.27,z],[x+w/2+.65,bottom+h+.27,z],.055,.055,'#9da79d',12);
   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;const c=canvas.getContext('2d'),gradient=c.createLinearGradient(0,0,1024,512);gradient.addColorStop(0,'#142921');gradient.addColorStop(.6,'#223d3b');gradient.addColorStop(1,'#414b42');c.fillStyle=gradient;c.fillRect(0,0,1024,512);c.strokeStyle='#9fba8722';c.lineWidth=1;for(let x=0;x<1024;x+=25){c.beginPath();c.moveTo(x,0);c.lineTo(x,512);c.stroke()}for(let y=0;y<512;y+=25){c.beginPath();c.moveTo(0,y);c.lineTo(1024,y);c.stroke()}c.textAlign='center';c.fillStyle='#becda5';c.font='700 20px Arial';c.fillText('ESCRITÓRIO DO CRIME  /  RIO 021',512,117);c.fillStyle='#f3e9c6';c.font='900 82px Arial';c.fillText('BAILE DA FIRMA',512,245,970);c.font='23px Arial';c.fillStyle='#d3dfc0';c.fillText('YOUTUBE  •  MÚSICA  •  TRANSMISSÃO DE TELA',512,322);c.font='18px Arial';c.fillText('Chega mais. O som fica melhor de perto.',512,405);
-  const display=new Mesh();display.quad([x-w/2,bottom,z+.13],[x+w/2,bottom,z+.13],[x+w/2,bottom+h,z+.13],[x-w/2,bottom+h,z+.13],'#ffffff',[0,0,1],.45);scene.addBatch(display,'solid',canvas);
+  const display=new Mesh();display.quad([x-w/2,bottom,z+.145],[x+w/2,bottom,z+.145],[x+w/2,bottom+h,z+.145],[x-w/2,bottom+h,z+.145],'#ffffff',[0,0,1],.45);scene.addBatch(display,'solid',canvas);
  };
 
  // A continuous neighborhood and a mountain silhouette give the playable space context.
@@ -703,6 +703,36 @@ function buildWorld(scene,Mesh){
   for(const z of [-8,10]){wire([-12,4,z],[12,4,z],.8);for(let i=1;i<22;i++){const t=i/22;m.cylinder(-12+24*t,4-Math.sin(t*Math.PI)*.8-.1,z,.05,.18,'#ffe2a6',10,1)}}
  }
  for(const [type,mesh] of groups)scene.addBatch(mesh,type);
+}
+
+// The DOM video stays below the world. Only visible screen pixels reveal it.
+function screenPlaneVertices(s){
+ const left=s.x-s.w/2,right=s.x+s.w/2,bottom=s.bottom,top=s.bottom+s.h,z=s.z;
+ return new Float32Array([left,bottom,z,right,bottom,z,right,top,z,left,bottom,z,right,top,z,left,top,z]);
+}
+class ScreenDepthWindow{
+ constructor(gl){
+  this.gl=gl;this.buffer=gl.createBuffer();this.program=gl.createProgram();
+  for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec3 position;uniform mat4 vp;void main(){gl_Position=vp*vec4(position,1.0);}'],[gl.FRAGMENT_SHADER,'precision mediump float;void main(){gl_FragColor=vec4(0.0);}']]){
+   const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
+   if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));
+   gl.attachShader(this.program,shader);gl.deleteShader(shader);
+  }
+  gl.linkProgram(this.program);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(this.program));
+  this.position=gl.getAttribLocation(this.program,'position');this.vp=gl.getUniformLocation(this.program,'vp');
+ }
+ draw(screen,matrix){
+  if(!screen)return;const g=this.gl,key=[screen.x,screen.z,screen.w,screen.h,screen.bottom].join(':');
+  g.bindBuffer(g.ARRAY_BUFFER,this.buffer);
+  if(key!==this.key){g.bufferData(g.ARRAY_BUFFER,screenPlaneVertices(screen),g.STATIC_DRAW);this.key=key}
+  g.useProgram(this.program);g.uniformMatrix4fv(this.vp,false,matrix);
+  g.enableVertexAttribArray(this.position);g.vertexAttribPointer(this.position,3,g.FLOAT,false,12,0);
+  // Preserve the scene's depth buffer, including every object in front of the screen.
+  g.enable(g.DEPTH_TEST);g.disable(g.BLEND);g.depthFunc(g.LEQUAL);g.depthMask(false);
+  g.drawArrays(g.TRIANGLES,0,6);
+  g.depthMask(true);g.depthFunc(g.LESS);
+ }
+ dispose(){this.gl.deleteBuffer(this.buffer);this.gl.deleteProgram(this.program)}
 }
 
 let avatarModulePromise;
@@ -784,7 +814,7 @@ class OfficeScene{
   Object.assign(this,{locomotion:new Locomotion(),footsteps:new FootstepAudio(),running:false,seatId:'',pendingSeat:null,cameraMode:'overhead',hideSelf:false,preview:!!options.preview,canvas,labels,onMove,onError,yaw:.25,pitch:.62,zoom:1,theme:'office',members:new Map(),self:null,position:{x:0,z:3},path:[],keys:new Set(),last:0,facing:Math.PI,walkingUntil:0,cameraTarget:[0,.8,0],batches:[],textureCache:new Map()});
   this.gl=canvas.getContext('webgl',{antialias:true,alpha:true,preserveDrawingBuffer:true});if(!this.gl){onError();return}
   const g=this.gl,program=(vs,fs)=>{const p=g.createProgram();for(const [type,src] of [[g.VERTEX_SHADER,vs],[g.FRAGMENT_SHADER,fs]]){const s=g.createShader(type);g.shaderSource(s,src);g.compileShader(s);if(!g.getShaderParameter(s,g.COMPILE_STATUS))throw Error(g.getShaderInfoLog(s));g.attachShader(p,s)}g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw Error(g.getProgramInfoLog(p));return p};
-  try{this.program=program(vertexSource,fragmentSource);this.shadowProgram=program(shadowVertex,shadowFragment)}catch(e){console.error(e);onError();return}
+  try{this.program=program(vertexSource,fragmentSource);this.shadowProgram=program(shadowVertex,shadowFragment);if(!this.preview)this.screenDepth=new ScreenDepthWindow(g)}catch(e){console.error(e);onError();return}
   this.attrs=[['p',3,0],['n',3,3],['c',3,6],['uv',2,9],['e',1,11]].map(([name,size,offset])=>[g.getAttribLocation(this.program,name),size,offset]);
   this.uniforms={};for(const name of ['vp','sunMatrix','image','shadowMap','textured','night','eye','fogColor','shadowSize','water','time'])this.uniforms[name]=g.getUniformLocation(this.program,name);
   this.shadowPosition=g.getAttribLocation(this.shadowProgram,'p');this.shadowVP=g.getUniformLocation(this.shadowProgram,'vp');this.dynamicBuffer=g.createBuffer();g.enable(g.DEPTH_TEST);
@@ -830,7 +860,7 @@ class OfficeScene{
   const yaw=m.id===this.self?this.facing:m.facing,cs=Math.cos(yaw),sn=Math.sin(yaw);
   for(let i=0;i<vertices.length;i+=12){const x=vertices[i],z=vertices[i+2],nx=vertices[i+3],nz=vertices[i+5];vertices[i]=m.px+x*cs+z*sn;vertices[i+2]=m.pz-x*sn+z*cs;vertices[i+3]=nx*cs+nz*sn;vertices[i+5]=-nx*sn+nz*cs}return vertices;
  }
- dispose(){this.footsteps.dispose();cancelAnimationFrame(this.raf);this.resizeObserver?.disconnect();if(this.gl){for(const b of this.batches)this.gl.deleteBuffer(b.buffer);this.gl.getExtension("WEBGL_lose_context")?.loseContext()}}
+ dispose(){this.screenDepth?.dispose();this.footsteps.dispose();cancelAnimationFrame(this.raf);this.resizeObserver?.disconnect();if(this.gl){for(const b of this.batches)this.gl.deleteBuffer(b.buffer);this.gl.getExtension("WEBGL_lose_context")?.loseContext()}}
  bind(buffer,shadow){const g=this.gl;g.bindBuffer(g.ARRAY_BUFFER,buffer);if(shadow){g.enableVertexAttribArray(this.shadowPosition);g.vertexAttribPointer(this.shadowPosition,3,g.FLOAT,false,48,0)}else for(const [loc,size,off] of this.attrs){g.enableVertexAttribArray(loc);g.vertexAttribPointer(loc,size,g.FLOAT,false,48,off*4)}}
  draw(batch,shadow=false){const g=this.gl;this.bind(batch.buffer,shadow);if(!shadow){g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,batch.texture||this.white);g.uniform1f(this.uniforms.textured,batch.texture?1:0);g.uniform1f(this.uniforms.water,batch.water?1:0)}g.drawArrays(g.TRIANGLES,0,batch.count)}
  tick(time){
@@ -852,14 +882,14 @@ class OfficeScene{
    const radius=this.preview?4.0:this.coastView?22/this.zoom:(aspect<.85?40:29)/this.zoom;eye=[this.cameraTarget[0]+Math.sin(this.yaw)*Math.cos(this.pitch)*radius,this.cameraTarget[1]+Math.sin(this.pitch)*radius,this.cameraTarget[2]+Math.cos(this.yaw)*Math.cos(this.pitch)*radius];
    this.fov=this.preview?.58:this.coastView?1.2:.78;this.cameraNear=.15;this.hideSelf=false;
   }
-  this.eye=eye;this.matrix=mult(perspective(this.fov,aspect,this.cameraNear,300),look(eye,this.cameraTarget));
+  this.eye=eye;this.matrix=mult(perspective(this.fov,aspect,this.cameraNear,300),look(eye,this.cameraTarget));this.updateMediaFrame?.();
   let vertices=[];if(this.path.length){const p=this.path.at(-1),ring=new Mesh();ring.ring(p.x,p.z,.22+Math.sin(time*.006)*.025,.035,'#e7dba8');vertices.push(...ring.v)}
   for(const m of this.members.values()){let moving=false;if(m.id===this.self){const anchor=this.listenerPosition();m.px=anchor.x;m.pz=anchor.z;moving=time<this.walkingUntil}else{const dx=m.x-m.px,dz=m.z-m.pz;moving=Math.hypot(dx,dz)>.025;if(moving)m.facing=Math.atan2(dx,dz);m.px+=dx*Math.min(1,dt*5);m.pz+=dz*Math.min(1,dt*5)}if(this.preview)for(const value of this.avatar(m,time,moving))vertices.push(value);const seat=seatById(this.theme,m.id===this.self?this.seatId:m.seat_id);if(seat){m.px=seat.x;m.pz=seat.z;m.facing=seat.facing}const p=this.project(m.px,(seat?1.55:2.03)+(m.id===this.self?this.locomotion.height:0),m.pz);m.label.style.left=p.x*100+'%';m.label.style.top=p.y*100+'%';m.label.hidden=(m.id===this.self&&this.cameraMode!=='overhead')||p.w<0||p.x<0||p.x>1||p.y<0||p.y>1}
   const g=this.gl,dynamic={buffer:this.dynamicBuffer,count:vertices.length/12};g.bindBuffer(g.ARRAY_BUFFER,this.dynamicBuffer);g.bufferData(g.ARRAY_BUFFER,new Float32Array(vertices),g.DYNAMIC_DRAW);
   g.bindFramebuffer(g.FRAMEBUFFER,this.shadowFramebuffer);g.viewport(0,0,this.shadowResolution,this.shadowResolution);g.clearColor(1,0,0,1);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);g.useProgram(this.shadowProgram);g.uniformMatrix4fv(this.shadowVP,false,this.sunMatrix);for(const b of this.batches)if(b.castShadow)this.draw(b,true);if(dynamic.count)this.draw(dynamic,true);
   g.bindFramebuffer(g.FRAMEBUFFER,null);g.viewport(0,0,this.canvas.width,this.canvas.height);g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);g.useProgram(this.program);
   const u=this.uniforms;g.uniformMatrix4fv(u.vp,false,this.matrix);g.uniformMatrix4fv(u.sunMatrix,false,this.sunMatrix);g.uniform3fv(u.eye,eye);g.uniform3fv(u.fogColor,this.fog);g.uniform1f(u.night,this.night);g.uniform1f(u.time,time*.001);g.uniform1f(u.shadowSize,this.shadowResolution);g.uniform1i(u.image,0);g.uniform1i(u.shadowMap,1);g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,this.shadowTexture);
-  for(const b of this.batches)this.draw(b);if(dynamic.count)this.draw(dynamic);this.avatarLayer?.render(time,dt);
+  for(const b of this.batches)this.draw(b);if(dynamic.count)this.draw(dynamic);if(this.mediaVisible)this.screenDepth?.draw(this.screen,this.matrix);this.avatarLayer?.render(time,dt);
  }
 }
 
@@ -871,13 +901,73 @@ function youtubeId(input){
  else if(['youtube.com','www.youtube.com','m.youtube.com','youtube-nocookie.com','www.youtube-nocookie.com'].includes(host)){id=u.pathname==='/watch'?u.searchParams.get('v'):u.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1]}
  return typeof id==='string'&&/^[\w-]{11}$/.test(id)?id:null;
 }
-function stageVolume(distance){if(!Number.isFinite(distance)||distance>=20)return 0;if(distance<=3)return 1;const t=(distance-3)/17;return (1-t)*(1-t)}
+function stageVolume(distance){if(!Number.isFinite(distance)||distance>=18)return 0;if(distance<=2.5)return 1;const falloff=Math.pow(2.5/distance,2),edge=Math.max(0,Math.min(1,(18-distance)/8));return falloff*edge*edge}
 function mediaTime(media,serverNow=Date.now()){return Math.max(0,Number(media?.position)||0)+(media&&!media.paused?Math.max(0,serverNow-media.updated_at)/1000:0)}
 function screenTransform(points,width=960,height=540){
  const source=[[0,0],[1,0],[1,1],[0,1]],a=[];
  for(let i=0;i<4;i++){const [x,y]=source[i],{x:u,y:v}=points[i];a.push([x,y,1,0,0,0,-u*x,-u*y,u],[0,0,0,x,y,1,-v*x,-v*y,v])}
  for(let c=0;c<8;c++){let best=c;for(let r=c+1;r<8;r++)if(Math.abs(a[r][c])>Math.abs(a[best][c]))best=r;if(Math.abs(a[best][c])<1e-8)return null;[a[c],a[best]]=[a[best],a[c]];const k=a[c][c];for(let j=c;j<9;j++)a[c][j]/=k;for(let r=0;r<8;r++)if(r!==c){const q=a[r][c];for(let j=c;j<9;j++)a[r][j]-=q*a[c][j]}}
  const h=a.map(r=>r[8]);return [h[0]/width,h[3]/width,0,h[6]/width,h[1]/height,h[4]/height,0,h[7]/height,0,0,1,0,h[2],h[5],0,1];
+}
+
+function stageSpeakers(screen){
+ const s=screen||{x:0,z:-6.705,w:7.2};
+ return [-1,1].map(side=>({x:s.x+side*(s.w/2+.65),y:1.35,z:s.z+1.365}));
+}
+function speakerPlacement(listener,speaker){
+ const dx=listener.x-speaker.x,dy=(listener.y??1.62)-speaker.y,dz=listener.z-speaker.z,distance=Math.hypot(dx,dy,dz);
+ if(!Number.isFinite(distance))return {gain:0,cutoff:900,distance:Infinity};
+ const front=distance<.01?1:Math.max(0,dz/distance);
+ const cone=Math.min(1,front/.35),directivity=.22+.78*cone*cone;
+ return {gain:stageVolume(distance)*directivity*.5,cutoff:Math.max(900,16000/(1+distance*.21))*(.65+.35*front),distance};
+}
+function stageSoundPlacement(listener,screen){
+ const speakers=stageSpeakers(screen).map(position=>({...speakerPlacement(listener,position),position}));
+ return {speakers,gain:Math.min(1,speakers.reduce((sum,s)=>sum+s.gain,0))};
+}
+class StageSpeakerMixer{
+ constructor(){this.context=null;this.source=null;this.stream=null;this.channels=[]}
+ unlock(){
+  try{
+   if(!this.context){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return false;this.context=new Audio()}
+   if(this.context.state==='suspended')this.context.resume().catch(()=>{});return true;
+  }catch{return false}
+ }
+ attach(stream){
+  if(this.stream===stream&&this.source)return true;this.clear();
+  if(!stream?.getAudioTracks().length||!this.unlock())return false;
+  const c=this.context;
+  try{
+   this.source=c.createMediaStreamSource(stream);
+   this.channels=[0,1].map(()=>{
+    const filter=c.createBiquadFilter(),gain=c.createGain(),panner=c.createPanner();
+    filter.type='lowpass';filter.Q.value=.55;gain.gain.value=0;
+    panner.panningModel='HRTF';panner.distanceModel='inverse';panner.rolloffFactor=0;
+    panner.channelCount=1;panner.channelCountMode='explicit';
+    this.source.connect(filter);filter.connect(gain);gain.connect(panner);panner.connect(c.destination);
+    return {filter,gain,panner};
+   });this.stream=stream;return true;
+  }catch{this.clear();return false}
+ }
+ update(listener,yaw,pitch,placement,muted=false){
+  if(!this.source||!this.context)return;const c=this.context,t=c.currentTime,l=c.listener;
+  const forward=[-Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)];
+  const up=[-Math.sin(yaw)*Math.sin(pitch),Math.cos(pitch),-Math.cos(yaw)*Math.sin(pitch)];
+  const smooth=(param,value)=>{param.cancelScheduledValues(t);param.setTargetAtTime(value,t,.045)};
+  if(l.positionX){[l.positionX,l.positionY,l.positionZ].forEach((p,i)=>smooth(p,[listener.x,listener.y??1.62,listener.z][i]));[l.forwardX,l.forwardY,l.forwardZ].forEach((p,i)=>smooth(p,forward[i]));[l.upX,l.upY,l.upZ].forEach((p,i)=>smooth(p,up[i]))}
+  else{l.setPosition(listener.x,listener.y??1.62,listener.z);l.setOrientation(...forward,...up)}
+  this.channels.forEach((channel,i)=>{
+   const {position,gain,cutoff}=placement.speakers[i],p=channel.panner;
+   if(p.positionX)[p.positionX,p.positionY,p.positionZ].forEach((param,j)=>smooth(param,[position.x,position.y,position.z][j]));else p.setPosition(position.x,position.y,position.z);
+   channel.gain.gain.cancelScheduledValues(t);
+   if(muted)channel.gain.gain.setValueAtTime(0,t);else channel.gain.gain.setTargetAtTime(gain,t,.06);
+   smooth(channel.filter.frequency,cutoff);
+  });
+ }
+ clear(){
+  this.source?.disconnect();for(const c of this.channels){c.filter.disconnect();c.gain.disconnect();c.panner.disconnect()}
+  this.source=null;this.stream=null;this.channels=[];
+ }
 }
 
 let youtubeApiPromise;
@@ -890,7 +980,8 @@ class MediaStage{
  constructor({scene,session,publish,onShare,toast}){
   Object.assign(this,{scene,session,publish,onShare,toast,current:null,player:null,ready:false,muted:false,deafened:false,stream:null,generation:0,lastSync:0,lastVolume:-1});
   this.plane=document.querySelector('#world-media-plane');this.video=document.querySelector('#stage-video');this.youtube=document.querySelector('#stage-youtube');this.label=document.querySelector('#media-volume');this.detail=document.querySelector('#media-status');this.remoteAudio=document.createElement('audio');this.remoteAudio.autoplay=true;
-  this.frame=this.frame.bind(this);requestAnimationFrame(this.frame);
+  this.speakerMixer=new StageSpeakerMixer();this.scene.updateMediaFrame=()=>this.frame();this.scene.mediaVisible=false;
+  window.addEventListener('pointerdown',()=>{if(this.scene.self)this.speakerMixer.unlock()});window.addEventListener('keydown',()=>{if(this.scene.self)this.speakerMixer.unlock()});
  }
  async loadPlayer(id,time,paused){
   const generation=this.generation;this.youtube.hidden=false;this.video.hidden=true;
@@ -902,43 +993,54 @@ class MediaStage{
  }
  async playUrl(url){const id=youtubeId(url);if(!id)throw Error('Cole um link válido de vídeo do YouTube.');await this.stopCapture(false);const result=await this.publish({kind:'youtube',video_id:id,position:0,paused:false});this.sync(result.media,Date.now());this.muted=false;this.applyVolume()}
  async pause(){if(this.current?.kind!=='youtube')return;const paused=!this.current.paused,position=this.ready?this.player.getCurrentTime():mediaTime(this.current);const result=await this.publish({kind:'youtube',video_id:this.current.video_id,position,paused});this.sync(result.media,Date.now())}
- enableSound(){this.muted=false;this.applyVolume();if(this.ready){this.player.unMute();if(!this.current?.paused)this.player.playVideo()}this.video.play().catch(()=>{});this.remoteAudio.play().catch(()=>{});this.toast('Som do telão ativado. Caminhe para sentir a distância.')}
+ enableSound(){this.speakerMixer.unlock();this.muted=false;this.applyVolume();if(this.ready){this.player.unMute();if(!this.current?.paused)this.player.playVideo()}this.video.play().catch(()=>{});this.remoteAudio.play().catch(()=>{});this.toast('Som do telão ativado. Caminhe para sentir a distância.')}
  toggleMute(){this.muted=!this.muted;this.applyVolume();return this.muted}
  async stop(){if(this.current?.kind==='screen'&&this.current.owner_session!==this.session){this.toast('Apenas quem está transmitindo pode encerrar a tela.');return}await this.stopCapture(false);const result=await this.publish({kind:'none'});this.sync(result.media,Date.now())}
  async share(){
   if(!navigator.mediaDevices?.getDisplayMedia)throw Error('Compartilhamento de tela indisponível neste navegador. Use Chrome ou Edge no computador.');
-  const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:20,max:30}},audio:true});
-  try{await this.stopCapture(false);this.stream=stream;await this.onShare(stream);const result=await this.publish({kind:'screen'});this.sync(result.media,Date.now());this.video.srcObject=stream;this.video.muted=true;this.video.play().catch(()=>{});stream.getVideoTracks()[0].addEventListener('ended',()=>{if(this.stream===stream)this.stop().catch(()=>this.stopCapture(false))});if(!stream.getAudioTracks().length)this.toast('Tela compartilhada sem áudio. Para incluir som, compartilhe uma aba com áudio.')}
+  const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:20,max:30}},audio:{suppressLocalAudioPlayback:true},selfBrowserSurface:'exclude'});
+  try{await this.stopCapture(false);this.stream=stream;await this.onShare(stream);const result=await this.publish({kind:'screen'});this.sync(result.media,Date.now());this.video.srcObject=stream;this.video.muted=true;this.video.play().catch(()=>{});this.monitorCapture(stream);stream.getVideoTracks()[0].addEventListener('ended',()=>{if(this.stream===stream)this.stop().catch(()=>this.stopCapture(false))});if(!stream.getAudioTracks().length)this.toast('Tela compartilhada sem áudio. Para incluir som, compartilhe uma aba com áudio.')}
   catch(e){stream.getTracks().forEach(t=>t.stop());this.stream=null;await this.onShare(null);throw e}
  }
- async stopCapture(notify=false){const stream=this.stream;this.stream=null;if(stream)stream.getTracks().forEach(t=>t.stop());if(stream)await this.onShare(null);if(notify&&this.current?.owner_session===this.session)await this.publish({kind:'none'})}
+ async stopCapture(notify=false){const stream=this.stream;this.stream=null;this.speakerMixer.clear();if(stream)stream.getTracks().forEach(t=>t.stop());if(stream)await this.onShare(null);if(notify&&this.current?.owner_session===this.session)await this.publish({kind:'none'})}
+ monitorCapture(stream){
+  const videoSettings=stream.getVideoTracks()[0]?.getSettings()||{},audioSettings=stream.getAudioTracks()[0]?.getSettings()||{};
+  const safe=videoSettings.displaySurface==='browser'&&(videoSettings.suppressLocalAudioPlayback===true||audioSettings.suppressLocalAudioPlayback===true);
+  if(safe&&stream.getAudioTracks().length)this.speakerMixer.attach(stream);
+  else if(stream.getAudioTracks().length)this.toast('O navegador mantém o som na aba original. Quem recebe a transmissão terá som 3D.');
+  this.applyVolume();
+ }
  attachRemote(id,track){
   if(this.current?.kind!=='screen'||this.current.owner_session!==id)return;
-  const target=track.kind==='video'?this.video:this.remoteAudio;if(target.srcObject?.getTracks().some(t=>t.id===track.id))return;target.srcObject=new MediaStream([track]);target.muted=track.kind==='video';target.play().catch(()=>this.toast('Clique em Ativar som para acompanhar a transmissão.'));this.applyVolume();
+  const target=track.kind==='video'?this.video:this.remoteAudio;if(target.srcObject?.getTracks().some(t=>t.id===track.id))return;target.srcObject=new MediaStream([track]);target.muted=track.kind==='video'||this.speakerMixer.attach(target.srcObject);target.play().catch(()=>this.toast('Clique em Ativar som para acompanhar a transmissão.'));this.applyVolume();
  }
  sync(media,serverNow=Date.now()){
   const next=media&&media.kind!=='none'?media:null,key=next?next.kind+':'+next.video_id+':'+next.owner_session:'none',oldKey=this.current?this.current.kind+':'+this.current.video_id+':'+this.current.owner_session:'none';
-  const changed=key!==oldKey,updated=next?.updated_at!==this.current?.updated_at||next?.paused!==this.current?.paused;this.current=next;
-  if(!next){if(changed){this.generation++;this.player?.destroy?.();this.player=null;this.ready=false;this.youtube.innerHTML='<div id="stage-youtube-player"></div>'}this.plane.hidden=true;this.video.srcObject=null;this.remoteAudio.srcObject=null;this.detail.textContent='Telão livre · escolha um vídeo ou transmita a tela';return}
+  const changed=key!==oldKey,updated=next?.updated_at!==this.current?.updated_at||next?.paused!==this.current?.paused;this.current=next;if(changed)this.speakerMixer.clear();
+  if(!next){if(changed){this.generation++;this.player?.destroy?.();this.player=null;this.ready=false;this.youtube.innerHTML='<div id="stage-youtube-player"></div>'}this.plane.hidden=true;this.video.srcObject=null;this.remoteAudio.srcObject=null;this.detail.textContent='Telão livre · escolha um vídeo ou transmita a tela';this.scene.mediaVisible=false;this.applyVolume();return}
   this.plane.hidden=false;this.detail.textContent=next.kind==='youtube'?(next.paused?'YouTube · pausado':'YouTube · tocando'):(next.owner_session===this.session?'Você está transmitindo':'Transmissão da sala');
   if(changed){this.generation++;if(next.kind==='youtube'){this.video.srcObject=null;this.remoteAudio.srcObject=null;this.loadPlayer(next.video_id,mediaTime(next,serverNow),!!next.paused)}else{if(this.ready)this.player.pauseVideo();this.youtube.hidden=true;this.video.hidden=false;if(next.owner_session===this.session&&this.stream){this.video.srcObject=this.stream;this.video.muted=true;this.video.play().catch(()=>{})}}}
   else if(next.kind==='youtube'&&this.ready){const desired=mediaTime(next,serverNow);if(updated||Date.now()-this.lastSync>8000){if(Math.abs(this.player.getCurrentTime()-desired)>3)this.player.seekTo(desired,true);if(next.paused)this.player.pauseVideo();else if(updated)this.player.playVideo();this.lastSync=Date.now()}}
   this.applyVolume();
  }
  applyVolume(){
-  const speaker=this.scene.screen||{x:0,z:-6.85},distance=Math.hypot(this.scene.position.x-speaker.x,this.scene.position.z-speaker.z),volume=this.muted||this.deafened?0:Math.round(stageVolume(distance)*100);
-  if(this.ready&&volume!==this.lastVolume){this.player.setVolume(volume);if(this.muted||this.deafened)this.player.mute();else this.player.unMute()}
-  this.remoteAudio.volume=volume/100;this.label.textContent='Som do telão: '+volume+'%';this.lastVolume=volume;
+  const position=this.scene.listenerPosition(),listener={...position,y:1.62-(this.scene.seatId?.42:0)+(this.scene.locomotion?.height||0)},placement=stageSoundPlacement(listener,this.scene.screen),muted=this.muted||this.deafened||!this.current,volume=muted?0:Math.round(placement.gain*100);
+  if(this.ready&&(volume!==this.lastVolume||Math.abs((this.player.getVolume?.()??volume)-volume)>.5)){this.player.setVolume(volume);if(muted)this.player.mute();else this.player.unMute()}
+  this.speakerMixer.update(listener,this.scene.yaw,this.scene.pitch,placement,muted);
+  this.remoteAudio.volume=muted?0:placement.gain;this.remoteAudio.muted=!!this.speakerMixer.source||muted;
+  this.label.textContent='Som das caixas: '+volume+'%';this.lastVolume=volume;
+  const note=document.querySelector('#media-spatial-note');if(note){const text=this.current?.kind==='youtube'?'YouTube: volume por distância. Para estéreo 3D, compartilhe outra aba com áudio.':this.current?.kind==='screen'?'Transmissão: som direcional das duas caixas. Use fones.':'Mais longe, bem mais baixo. Na praia, quase silêncio.';if(note.textContent!==text)note.textContent=text;}
   const mute=document.querySelector('[data-action="media-mute"]');if(mute)mute.textContent=this.muted?'Ativar som':'Silenciar';
  }
  focus(){document.body.classList.toggle('screen-focused')}
  leave(){this.deafened=false;this.generation++;this.stopCapture(false).catch(()=>{});this.sync(null);document.body.classList.remove('screen-focused','media-open')}
  frame(){
-  requestAnimationFrame(this.frame);if(!this.scene.self||!this.scene.matrix||!this.current)return;
-  this.applyVolume();const s=this.scene.screen;if(!s)return;
+  this.scene.mediaVisible=false;if(!this.scene.self||!this.scene.matrix||!this.current)return;
+  const now=performance.now();if(!this.lastAudioFrame||now-this.lastAudioFrame>80){this.lastAudioFrame=now;this.applyVolume()}const s=this.scene.screen;if(!s)return;
   const points=[[s.x-s.w/2,s.bottom+s.h,s.z],[s.x+s.w/2,s.bottom+s.h,s.z],[s.x+s.w/2,s.bottom,s.z],[s.x-s.w/2,s.bottom,s.z]].map(p=>this.scene.project(...p));
-  const front=this.scene.eye?.[2]>s.z;this.plane.style.visibility=front&&points.every(p=>p.w>0)?'visible':'hidden';
+  const front=this.scene.eye?.[2]>s.z,visible=front&&points.every(p=>p.w>0);
   const transform=screenTransform(points.map(p=>({x:p.x*this.scene.canvas.clientWidth,y:p.y*this.scene.canvas.clientHeight})));
+  this.plane.style.visibility=visible&&transform?'visible':'hidden';this.scene.mediaVisible=!!(visible&&transform&&!document.body.classList.contains('screen-focused'));
   if(transform)this.plane.style.transform='matrix3d('+transform.join(',')+')';
  }
 }
