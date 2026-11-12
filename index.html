@@ -1247,6 +1247,35 @@ this.label.textContent='Som das caixas: '+volume+'%'+audioState;this.lastVolume=
  }
 }
 
+// Only the offerer creates media sections. The answerer reuses those from the remote offer.
+function prepareVoiceTransceivers(peer,create=false){
+ const pc=peer.pc;
+ if(create&&pc.getTransceivers().length===0){
+  for(const kind of ['audio','video','audio'])pc.addTransceiver(kind,{direction:'sendrecv'});
+ }
+ const tracks=pc.getTransceivers().filter(t=>!t.stopped);
+ if(tracks.length<3)return false;
+ [peer.voiceTransceiver,peer.screenTransceiver,peer.screenAudioTransceiver]=tracks;
+ for(const t of tracks)t.direction='sendrecv';
+ peer.sender=peer.voiceTransceiver.sender;
+ peer.screenSender=peer.screenTransceiver.sender;
+ peer.screenAudioSender=peer.screenAudioTransceiver.sender;
+ return true;
+}
+async function attachVoiceTracks(peer,voiceStream,screenStream){
+ await Promise.all([
+  peer.sender?.replaceTrack(voiceStream?.getAudioTracks()[0]||null),
+  peer.screenSender?.replaceTrack(screenStream?.getVideoTracks()[0]||null),
+  peer.screenAudioSender?.replaceTrack(screenStream?.getAudioTracks()[0]||null)
+ ]);
+}
+function voiceTrackRole(peer,transceiver){
+ const tracks=peer.pc.getTransceivers().filter(t=>!t.stopped);
+ const index=tracks.indexOf(transceiver);
+ return index===1?'screen':index===2?'screen-audio':'voice';
+}
+
+
 
 
 
@@ -1292,7 +1321,7 @@ $('#scene').addEventListener('camerachange',updateCameraUI);
 document.addEventListener('click',e=>{const camera=e.target.closest('button[data-camera-mode]');if(camera)scene.setCameraMode(camera.dataset.cameraMode);});
 try{scene.setCameraMode(localStorage.getItem('edc-camera-mode')||'overhead')}catch{}
 updateCameraUI();
-const mediaStage=new MediaStage({scene,session:state.session,publish:data=>request('media',data),onShare:async stream=>{await Promise.all([...state.peers.values()].map(async p=>{await p.screenSender.replaceTrack(stream?.getVideoTracks()[0]||null);await p.screenAudioSender.replaceTrack(stream?.getAudioTracks()[0]||null)}))},toast:msg=>toast(msg)});
+const mediaStage=new MediaStage({scene,session:state.session,publish:data=>request('media',data),onShare:async stream=>{await Promise.all([...state.peers.values()].map(async p=>{await attachVoiceTracks(p,state.stream,stream)}))},toast:msg=>toast(msg)});
 function toast(msg){$('#toast').textContent=msg;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4200)}
 async function request(path,data){const res=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,session:state.session})});let out;try{out=await res.json()}catch{throw new Error('Sua sessão expirou. Recarregue a página para entrar novamente.')}if(!res.ok)throw Object.assign(new Error(out.error||'Não foi possível concluir. Tente novamente.'),{status:res.status});return out}
 function saveProfile(){try{localStorage.setItem('edc-profile',JSON.stringify(profile))}catch{}updateProfile()}
@@ -1326,7 +1355,7 @@ let micPending=false;
 async function toggleMic(){if(!state.room||micPending)return;micPending=true;$('#mic-button').disabled=true;try{await changeMic()}finally{micPending=false;$('#mic-button').disabled=false;updateVoiceCheck()}}
 async function changeMic(){if(!state.room)return;const epoch=state.epoch;
 if(!state.stream){if(!navigator.mediaDevices?.getUserMedia){toast('Este navegador não oferece acesso ao microfone. Use uma conexão HTTPS e um navegador atualizado.');return}
-try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(epoch!==state.epoch||!state.room){stream.getTracks().forEach(t=>t.stop());return}state.stream=stream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{state.muted=true;state.stream=null;updateAudioUI()});for(const p of state.peers.values())await p.sender.replaceTrack(track);state.muted=false}catch(e){toast(e.name==='NotAllowedError'?'Microfone não autorizado. Permita o acesso nas configurações do navegador.':'Não encontramos um microfone disponível. Verifique o dispositivo.');return}
+try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(epoch!==state.epoch||!state.room){stream.getTracks().forEach(t=>t.stop());return}state.stream=stream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{state.muted=true;state.stream=null;updateAudioUI()});for(const p of state.peers.values())await p.sender?.replaceTrack(track);state.muted=false}catch(e){toast(e.name==='NotAllowedError'?'Microfone não autorizado. Permita o acesso nas configurações do navegador.':'Não encontramos um microfone disponível. Verifique o dispositivo.');return}
 }else{state.muted=!state.muted;state.stream.getAudioTracks().forEach(t=>t.enabled=!state.muted)}
 updateAudioUI();lastHeartbeat=0;poll()}
 function toggleSound(){state.deafened=!state.deafened;mediaStage.deafened=state.deafened;mediaStage.applyVolume();for(const p of state.peers.values())p.audio.muted=p.spatial||state.deafened;updateProximityAudio();updateAudioUI()}
@@ -1334,16 +1363,15 @@ async function sendSignal(to,payload){if(!state.room)return;await request('signa
 function getPeer(id){
 let peer=state.peers.get(id);if(peer)return peer;
 const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]});const audio=document.createElement('audio');audio.volume=0;audio.autoplay=true;audio.muted=state.deafened;document.body.append(audio);
-const transceiver=pc.addTransceiver('audio',{direction:'sendrecv'}),screenTransceiver=pc.addTransceiver('video',{direction:'sendrecv'}),screenAudioTransceiver=pc.addTransceiver('audio',{direction:'sendrecv'});peer={pc,audio,sender:transceiver.sender,screenSender:screenTransceiver.sender,screenAudioSender:screenAudioTransceiver.sender,videoTrack:null,screenAudioTrack:null,candidates:[],offered:false,retries:0,lastOffer:0,created:Date.now()};state.peers.set(id,peer);if(state.stream)peer.sender.replaceTrack(state.stream.getAudioTracks()[0]).catch(()=>{});
+peer={pc,audio,videoTrack:null,screenAudioTrack:null,candidates:[],offered:false,retries:0,lastOffer:0,created:Date.now()};state.peers.set(id,peer);prepareVoiceTransceivers(peer,state.session<id);attachVoiceTracks(peer,state.stream,mediaStage.stream).catch(e=>{peer.lastError=e.message});
 pc.onicecandidate=e=>{if(e.candidate)sendSignal(id,{type:'candidate',candidate:e.candidate.toJSON()}).catch(()=>{})};
-if(mediaStage.stream){peer.screenSender.replaceTrack(mediaStage.stream.getVideoTracks()[0]||null).catch(()=>{});peer.screenAudioSender.replaceTrack(mediaStage.stream.getAudioTracks()[0]||null).catch(()=>{})}
-pc.ontrack=e=>{if(e.transceiver===screenTransceiver){peer.videoTrack=e.track;mediaStage.attachRemote(id,e.track);return}if(e.transceiver===screenAudioTransceiver){peer.screenAudioTrack=e.track;mediaStage.attachRemote(id,e.track);return}audio.srcObject=new MediaStream([e.track]);peer.spatial=voiceMixer.add(id,audio.srcObject);audio.muted=peer.spatial||state.deafened;updateProximityAudio();audio.play().catch(()=>toast('Clique em Áudio para liberar a reprodução da conversa.'))};
+pc.ontrack=e=>{const role=voiceTrackRole(peer,e.transceiver);if(role==='screen'){peer.videoTrack=e.track;mediaStage.attachRemote(id,e.track);return}if(role==='screen-audio'){peer.screenAudioTrack=e.track;mediaStage.attachRemote(id,e.track);return}audio.srcObject=new MediaStream([e.track]);peer.spatial=voiceMixer.add(id,audio.srcObject);audio.muted=peer.spatial||state.deafened;updateProximityAudio();audio.play().catch(()=>toast('Clique em Áudio para liberar a reprodução da conversa.'))};
 pc.onconnectionstatechange=()=>{renderPeople();updateProximityAudio();if(pc.connectionState==='failed')toast('Tentando reconectar a voz. Se não voltar, use outra rede ou entre novamente.');};return peer}
 async function syncPeers(members,signals){
 if(!state.room||!window.RTCPeerConnection)return;const epoch=state.epoch,ids=new Set(members.filter(m=>m.room_id===state.room.id&&m.id!==state.session).map(m=>m.id));for(const id of [...state.peers.keys()])if(!ids.has(id))closePeer(id);
-for(const id of ids){const p=getPeer(id);if(state.session<id&&(!p.offered||p.pc.connectionState==='failed'&&p.retries<3&&Date.now()-p.lastOffer>8000)){const restart=p.offered;p.offered=true;p.lastOffer=Date.now();if(restart)p.retries++;try{await p.pc.setLocalDescription(await p.pc.createOffer({iceRestart:restart}));if(epoch!==state.epoch)return;await sendSignal(id,{type:'offer',sdp:p.pc.localDescription.sdp})}catch(e){p.offered=false;p.lastError=e.message}}}
+for(const id of ids){const p=getPeer(id);if(state.session<id&&(!p.offered||p.pc.connectionState==='failed'&&p.retries<3&&Date.now()-p.lastOffer>8000)){const restart=p.offered;p.offered=true;p.lastOffer=Date.now();if(restart)p.retries++;try{await attachVoiceTracks(p,state.stream,mediaStage.stream);await p.pc.setLocalDescription(await p.pc.createOffer({iceRestart:restart}));if(epoch!==state.epoch)return;await sendSignal(id,{type:'offer',sdp:p.pc.localDescription.sdp})}catch(e){p.offered=false;p.lastError=e.message}}}
 for(const signal of signals){if(epoch!==state.epoch)return;state.signalCursor=Math.max(state.signalCursor,signal.id);if(!ids.has(signal.sender))continue;try{const data=JSON.parse(signal.payload),p=getPeer(signal.sender);p.lastReceived=data.type;
-if(data.type==='offer'){await p.pc.setRemoteDescription({type:'offer',sdp:data.sdp});for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c);await p.pc.setLocalDescription(await p.pc.createAnswer());await sendSignal(signal.sender,{type:'answer',sdp:p.pc.localDescription.sdp})}
+if(data.type==='offer'){await p.pc.setRemoteDescription({type:'offer',sdp:data.sdp});prepareVoiceTransceivers(p);await attachVoiceTracks(p,state.stream,mediaStage.stream);for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c);await p.pc.setLocalDescription(await p.pc.createAnswer());await sendSignal(signal.sender,{type:'answer',sdp:p.pc.localDescription.sdp})}
 else if(data.type==='answer'&&p.pc.signalingState==='have-local-offer'){await p.pc.setRemoteDescription({type:'answer',sdp:data.sdp});for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c)}
 else if(data.type==='candidate'){if(p.pc.remoteDescription)await p.pc.addIceCandidate(data.candidate);else p.candidates.push(data.candidate)}
 }catch(e){const p=state.peers.get(signal.sender);if(p)p.lastError=e.message;if(state.room)$('#voice-state').textContent='Verificando conexão de voz…'}}}
