@@ -1009,7 +1009,7 @@ class MediaStage{
   try{const api=await youtubeAPI();if(generation!==this.generation)return;
    if(this.player&&!this.ready){this.player.destroy?.();this.player=null;this.youtube.innerHTML='<div id="stage-youtube-player"></div>'}
    if(this.player&&this.ready){this.player.loadVideoById({videoId:id,startSeconds:time});if(paused)this.player.pauseVideo();return}
-   this.player=new api.Player('stage-youtube-player',{width:'960',height:'540',videoId:id,playerVars:{playsinline:1,origin:location.origin,rel:0,controls:1,start:Math.floor(time)},events:{onReady:e=>{if(generation!==this.generation)return;this.ready=true;this.lastVolume=-1;this.youtubeAudio.reset();this.applyVolume();if(!paused)e.target.playVideo()},onError:e=>{this.toast([101,150].includes(e.data)?'Este vídeo não permite reprodução em outros sites. Escolha outro link.':'Não foi possível reproduzir esse vídeo do YouTube.');this.detail.textContent='Vídeo indisponível';},onAutoplayBlocked:()=>this.toast('Toque em “Ativar som” ou no play do telão para começar.')}});
+   this.player=new api.Player('stage-youtube-player',{width:'960',height:'540',videoId:id,playerVars:{playsinline:1,origin:location.origin,rel:0,controls:1,start:Math.floor(time)},events:{onReady:e=>{if(generation!==this.generation)return;this.ready=true;console.info('[Telao] YouTube conectado');this.lastVolume=-1;this.youtubeAudio.reset();this.applyVolume();if(!paused)e.target.playVideo()},onError:e=>{this.toast([101,150].includes(e.data)?'Este vídeo não permite reprodução em outros sites. Escolha outro link.':'Não foi possível reproduzir esse vídeo do YouTube.');this.detail.textContent='Vídeo indisponível';},onAutoplayBlocked:()=>this.toast('Toque em “Ativar som” ou no play do telão para começar.')}});
   }catch(e){this.toast(e.message)}
  }
  async playUrl(url){const id=youtubeId(url);if(!id)throw Error('Cole um link válido de vídeo do YouTube.');await this.stopCapture(false);const result=await this.publish({kind:'youtube',video_id:id,position:0,paused:false});this.sync(result.media,Date.now());this.muted=false;this.applyVolume()}
@@ -1053,7 +1053,13 @@ class MediaStage{
   if(this.ready)this.youtubeAudio.apply(this.player,volume,muted);
   this.speakerMixer.update(listener,this.scene.yaw,this.scene.pitch,placement,muted);
   this.remoteAudio.volume=muted?0:placement.gain;this.remoteAudio.muted=!!this.speakerMixer.source||muted;
-  this.label.textContent='Som das caixas: '+volume+'%';this.lastVolume=volume;
+  let audioState='';
+if(this.current?.kind==='youtube'){
+ if(!this.ready)audioState=' · conectando ao YouTube';
+ else if(volume===0)audioState=this.player.isMuted?.()||this.player.getVolume?.()===0?' · silêncio confirmado':' · silenciando';
+ else audioState=' · YouTube '+Math.round(this.player.getVolume?.()||0)+'%';
+}
+this.label.textContent='Som das caixas: '+volume+'%'+audioState;this.lastVolume=volume;
   const note=document.querySelector('#media-spatial-note');if(note){const text=this.current?.kind==='youtube'?'YouTube: volume por distância. Para estéreo 3D, compartilhe outra aba com áudio.':this.current?.kind==='screen'?'Transmissão: som direcional das duas caixas. Use fones.':'Mais longe, bem mais baixo. Na praia, quase silêncio.';if(note.textContent!==text)note.textContent=text;}
   const mute=document.querySelector('[data-action="media-mute"]');if(mute)mute.textContent=this.muted?'Ativar som':'Silenciar';
  }
