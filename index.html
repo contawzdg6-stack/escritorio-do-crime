@@ -144,7 +144,7 @@ if(path==='/api/state')return answer({user:demoGuest,rooms:demoRooms,members:dem
 if(path==='/api/join')demoMembers=[{id:d.session,room_id:d.room,name:d.name,color:d.color,appearance:d.appearance,x:0,z:3,muted:1}];
 if(path==='/api/leave'){const room=demoMembers[0]?.room_id;if(demoStage.get(room)?.kind==='screen')demoStage.delete(room);demoMembers=[];}
 if(path==='/api/heartbeat'&&demoMembers[0])Object.assign(demoMembers[0],d);
-if(path==='/api/media'){const room=demoMembers[0]?.room_id;if(!room)return {ok:false,status:409,json:async()=>({error:'Entre em uma sala primeiro.'})};const media=d.kind==='none'?null:{kind:d.kind,video_id:d.video_id||'',owner_session:d.session,position:d.position||0,paused:d.paused?1:0,updated_at:Date.now()};demoStage.set(room,media);return answer({media})}
+if(path==='/api/media'){const room=demoMembers[0]?.room_id;if(!room)return {ok:false,status:409,json:async()=>({error:'Entre em uma sala primeiro.'})};const media=d.kind==='none'?null:{local_preview:true,kind:d.kind,video_id:d.video_id||'',owner_session:d.session,position:d.position||0,paused:d.paused?1:0,updated_at:Date.now()};demoStage.set(room,media);return answer({media})}
 if(path==='/api/message')demoMessages.push({...d,id:++msgNumber,created_at:Date.now()});
 if(path==='/api/reaction'&&demoMembers[0])Object.assign(demoMembers[0],{reaction:d.reaction,reaction_at:Date.now()});
 if(path==='/api/rooms')demoRooms.push({...d,id:crypto.randomUUID()});
@@ -910,6 +910,27 @@ function screenTransform(points,width=960,height=540){
  const h=a.map(r=>r[8]);return [h[0]/width,h[3]/width,0,h[6]/width,h[1]/height,h[4]/height,0,h[7]/height,0,0,1,0,h[2],h[5],0,1];
 }
 
+// Coalesce iframe commands. A zero gain is also a real mute: never unMute at zero.
+class YouTubeAudioController{
+ constructor(){this.reset()}
+ reset(){this.volume=null;this.muted=null;this.lastCommand=-Infinity}
+ apply(player,requestedVolume,forceMute=false,now=performance.now()){
+  const volume=Math.max(0,Math.min(100,Math.round(requestedVolume))),muted=forceMute||volume===0;
+  const hardMute=muted&&this.muted!==true;
+  if(!hardMute&&now-this.lastCommand<200)return;
+  const actualVolume=player.getVolume?.(),actualMuted=player.isMuted?.();
+  let changed=false;
+  if(volume!==this.volume||(!muted&&Number.isFinite(actualVolume)&&Math.abs(actualVolume-volume)>=2)){
+   player.setVolume(volume);this.volume=volume;changed=true;
+  }
+  if(muted!==this.muted||(typeof actualMuted==='boolean'&&actualMuted!==muted)){
+   if(muted)player.mute();else player.unMute();
+   this.muted=muted;changed=true;
+  }
+  if(changed)this.lastCommand=now;
+ }
+}
+
 function stageSpeakers(screen){
  const s=screen||{x:0,z:-6.705,w:7.2};
  return [-1,1].map(side=>({x:s.x+side*(s.w/2+.65),y:1.35,z:s.z+1.365}));
@@ -980,7 +1001,7 @@ class MediaStage{
  constructor({scene,session,publish,onShare,toast}){
   Object.assign(this,{scene,session,publish,onShare,toast,current:null,player:null,ready:false,muted:false,deafened:false,stream:null,generation:0,lastSync:0,lastVolume:-1});
   this.plane=document.querySelector('#world-media-plane');this.video=document.querySelector('#stage-video');this.youtube=document.querySelector('#stage-youtube');this.label=document.querySelector('#media-volume');this.detail=document.querySelector('#media-status');this.remoteAudio=document.createElement('audio');this.remoteAudio.autoplay=true;
-  this.speakerMixer=new StageSpeakerMixer();this.scene.updateMediaFrame=()=>this.frame();this.scene.mediaVisible=false;
+  this.youtubeAudio=new YouTubeAudioController();this.speakerMixer=new StageSpeakerMixer();this.scene.updateMediaFrame=()=>this.frame();this.scene.mediaVisible=false;
   window.addEventListener('pointerdown',()=>{if(this.scene.self)this.speakerMixer.unlock()});window.addEventListener('keydown',()=>{if(this.scene.self)this.speakerMixer.unlock()});
  }
  async loadPlayer(id,time,paused){
@@ -988,12 +1009,12 @@ class MediaStage{
   try{const api=await youtubeAPI();if(generation!==this.generation)return;
    if(this.player&&!this.ready){this.player.destroy?.();this.player=null;this.youtube.innerHTML='<div id="stage-youtube-player"></div>'}
    if(this.player&&this.ready){this.player.loadVideoById({videoId:id,startSeconds:time});if(paused)this.player.pauseVideo();return}
-   this.player=new api.Player('stage-youtube-player',{width:'960',height:'540',videoId:id,playerVars:{playsinline:1,origin:location.origin,rel:0,controls:1,start:Math.floor(time)},events:{onReady:e=>{if(generation!==this.generation)return;this.ready=true;this.lastVolume=-1;this.applyVolume();if(!paused)e.target.playVideo()},onError:e=>{this.toast([101,150].includes(e.data)?'Este vídeo não permite reprodução em outros sites. Escolha outro link.':'Não foi possível reproduzir esse vídeo do YouTube.');this.detail.textContent='Vídeo indisponível';},onAutoplayBlocked:()=>this.toast('Toque em “Ativar som” ou no play do telão para começar.')}});
+   this.player=new api.Player('stage-youtube-player',{width:'960',height:'540',videoId:id,playerVars:{playsinline:1,origin:location.origin,rel:0,controls:1,start:Math.floor(time)},events:{onReady:e=>{if(generation!==this.generation)return;this.ready=true;this.lastVolume=-1;this.youtubeAudio.reset();this.applyVolume();if(!paused)e.target.playVideo()},onError:e=>{this.toast([101,150].includes(e.data)?'Este vídeo não permite reprodução em outros sites. Escolha outro link.':'Não foi possível reproduzir esse vídeo do YouTube.');this.detail.textContent='Vídeo indisponível';},onAutoplayBlocked:()=>this.toast('Toque em “Ativar som” ou no play do telão para começar.')}});
   }catch(e){this.toast(e.message)}
  }
  async playUrl(url){const id=youtubeId(url);if(!id)throw Error('Cole um link válido de vídeo do YouTube.');await this.stopCapture(false);const result=await this.publish({kind:'youtube',video_id:id,position:0,paused:false});this.sync(result.media,Date.now());this.muted=false;this.applyVolume()}
  async pause(){if(this.current?.kind!=='youtube')return;const paused=!this.current.paused,position=this.ready?this.player.getCurrentTime():mediaTime(this.current);const result=await this.publish({kind:'youtube',video_id:this.current.video_id,position,paused});this.sync(result.media,Date.now())}
- enableSound(){this.speakerMixer.unlock();this.muted=false;this.applyVolume();if(this.ready){this.player.unMute();if(!this.current?.paused)this.player.playVideo()}this.video.play().catch(()=>{});this.remoteAudio.play().catch(()=>{});this.toast('Som do telão ativado. Caminhe para sentir a distância.')}
+ enableSound(){this.speakerMixer.unlock();this.muted=false;this.applyVolume();if(this.ready&&!this.current?.paused)this.player.playVideo();this.video.play().catch(()=>{});this.remoteAudio.play().catch(()=>{});this.toast('Som do telão ativado. Caminhe para sentir a distância.')}
  toggleMute(){this.muted=!this.muted;this.applyVolume();return this.muted}
  async stop(){if(this.current?.kind==='screen'&&this.current.owner_session!==this.session){this.toast('Apenas quem está transmitindo pode encerrar a tela.');return}await this.stopCapture(false);const result=await this.publish({kind:'none'});this.sync(result.media,Date.now())}
  async share(){
@@ -1020,12 +1041,16 @@ class MediaStage{
   if(!next){if(changed){this.generation++;this.player?.destroy?.();this.player=null;this.ready=false;this.youtube.innerHTML='<div id="stage-youtube-player"></div>'}this.plane.hidden=true;this.video.srcObject=null;this.remoteAudio.srcObject=null;this.detail.textContent='Telão livre · escolha um vídeo ou transmita a tela';this.scene.mediaVisible=false;this.applyVolume();return}
   this.plane.hidden=false;this.detail.textContent=next.kind==='youtube'?(next.paused?'YouTube · pausado':'YouTube · tocando'):(next.owner_session===this.session?'Você está transmitindo':'Transmissão da sala');
   if(changed){this.generation++;if(next.kind==='youtube'){this.video.srcObject=null;this.remoteAudio.srcObject=null;this.loadPlayer(next.video_id,mediaTime(next,serverNow),!!next.paused)}else{if(this.ready)this.player.pauseVideo();this.youtube.hidden=true;this.video.hidden=false;if(next.owner_session===this.session&&this.stream){this.video.srcObject=this.stream;this.video.muted=true;this.video.play().catch(()=>{})}}}
-  else if(next.kind==='youtube'&&this.ready){const desired=mediaTime(next,serverNow);if(updated||Date.now()-this.lastSync>8000){if(Math.abs(this.player.getCurrentTime()-desired)>3)this.player.seekTo(desired,true);if(next.paused)this.player.pauseVideo();else if(updated)this.player.playVideo();this.lastSync=Date.now()}}
+  else if(next.kind==='youtube'&&this.ready){
+   const now=Date.now(),desired=mediaTime(next,serverNow);
+   if(updated){if(Math.abs(this.player.getCurrentTime()-desired)>1)this.player.seekTo(desired,true);if(next.paused)this.player.pauseVideo();else this.player.playVideo();this.lastSync=now}
+   else if(!next.local_preview&&!next.paused&&this.player.getPlayerState?.()===1&&now-this.lastSync>20000){if(Math.abs(this.player.getCurrentTime()-desired)>5)this.player.seekTo(desired,true);this.lastSync=now}
+  }
   this.applyVolume();
  }
  applyVolume(){
   const position=this.scene.listenerPosition(),listener={...position,y:1.62-(this.scene.seatId?.42:0)+(this.scene.locomotion?.height||0)},placement=stageSoundPlacement(listener,this.scene.screen),muted=this.muted||this.deafened||!this.current,volume=muted?0:Math.round(placement.gain*100);
-  if(this.ready&&(volume!==this.lastVolume||Math.abs((this.player.getVolume?.()??volume)-volume)>.5)){this.player.setVolume(volume);if(muted)this.player.mute();else this.player.unMute()}
+  if(this.ready)this.youtubeAudio.apply(this.player,volume,muted);
   this.speakerMixer.update(listener,this.scene.yaw,this.scene.pitch,placement,muted);
   this.remoteAudio.volume=muted?0:placement.gain;this.remoteAudio.muted=!!this.speakerMixer.source||muted;
   this.label.textContent='Som das caixas: '+volume+'%';this.lastVolume=volume;
