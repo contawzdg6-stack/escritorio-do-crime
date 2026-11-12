@@ -110,6 +110,29 @@ dialog.avatar-dialog{width:850px;max-width:calc(100vw - 28px);max-height:92dvh;p
 .avatar-label,.avatar-label.you{padding:4px 8px;border-radius:7px;background:rgba(14,24,20,.76);border:1px solid rgba(231,239,224,.17);box-shadow:0 2px 6px #0002;backdrop-filter:blur(4px);font-size:10px;font-weight:500;line-height:1.2;letter-spacing:.1px;color:#edf2e8;pointer-events:none;user-select:none}
 .avatar-label:after{content:"";position:absolute;left:50%;bottom:-4px;width:6px;height:6px;transform:translateX(-50%) rotate(45deg);background:#18261fe8;border-right:1px solid #e7efe02b;border-bottom:1px solid #e7efe02b}
 .avatar-name{display:block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Keep channels beside the world instead of covering it on desktop. */
+@media(min-width:900px){
+ .in-call{--room-sidebar-width:252px}
+ .in-call .sidebar,.in-call .sidebar.open{display:flex;position:fixed;inset:26px auto 0 0;width:var(--room-sidebar-width);z-index:40;box-shadow:none}
+ .in-call main{margin-left:var(--room-sidebar-width)}
+ .in-call .workspace{left:var(--room-sidebar-width)}
+ .in-call .voice-bar{left:calc(50% + var(--room-sidebar-width)/2);max-width:calc(100% - var(--room-sidebar-width) - 36px)}
+ .in-call .world-actions [data-action="menu"]{display:none}
+ .in-call.screen-focused #world-media-plane{position:absolute;width:min(92%,960px)}
+}
+@media(min-width:900px) and (max-width:1200px){
+ .in-call .voice-bar{flex-direction:column;gap:4px;padding:8px 12px}
+ .in-call .voice-info{align-self:center;min-width:0}
+ .in-call .voice-info div{display:flex;align-items:center;gap:9px}
+ .in-call .voice-info b{margin:0}
+ .in-call .call-controls{gap:3px}
+ .in-call .control{padding:7px 9px}
+ .in-call .live-pill{display:none}
+ .in-call .world-actions button span:not([data-icon]):not(.coast-symbol){display:none}
+ .in-call .camera-look-hint{bottom:170px}
+ .in-call .touch-pad{bottom:160px}
+}
 </style><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script></head>
 <body><div id="connection-banner" style="position:fixed;top:0;left:0;right:0;z-index:99;background:#b6f28c;color:#203119;text-align:center;font:11px Arial;padding:7px">AO VIVO · Compartilhe o convite para encontrar a galera.</div><style>.app{padding-top:27px}.topbar{min-height:58px;height:58px}</style><div class="app">
 <aside class="rail" aria-label="Navegação"><button class="brand-mark" title="Início" data-action="home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTgiIGZpbGw9IiNiNWYyOGIiLz48cGF0aCBkPSJNMTggMjdoMjh2MjFIMTh6TTI1IDI3di03aDE0djdNMTggMzRoMjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzE3MjExOCIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTI5IDMzaDZ2NWgtNnoiIGZpbGw9IiMxNzIxMTgiLz48L3N2Zz4=" alt="EDC"></button><div class="rail-line"></div><button class="rail-icon selected" title="Praça da Resenha" data-action="home" data-icon="building"></button><button class="rail-icon" title="Criar sala" data-action="create" data-icon="plus"></button><div class="rail-bottom"><button class="rail-icon" title="Como funciona" data-action="help" data-icon="help"></button><button class="mini-avatar" title="Meu perfil" data-action="profile">D</button></div></aside>
