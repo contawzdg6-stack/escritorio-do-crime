@@ -205,7 +205,7 @@ class LiveRoomStore{
    if(seat){const spec=seatById(allRooms.find(r=>r.id===m.room_id).theme,seat);if(!spec||Math.hypot(x-spec.approach.x,z-spec.approach.z)>1.5)return fail('Aproxime-se do banco.');if([...this.members.values()].some(p=>p.id!==id&&p.room_id===m.room_id&&p.seat_id===seat))return fail('Esse lugar está ocupado.',423);x=spec.approach.x;z=spec.approach.z}
    Object.assign(m,{name:guest.name,color:guest.color,appearance:guest.appearance,x,z,muted:d.muted?1:0,seat_id:seat,updated_at:now});return ok({ok:true});
   }
-  if(path==='signal'){const target=this.members.get(d.to);if(!target||target.room_id!==m.room_id)return fail('Participante desconectado.',409);if(!d.payload||!['offer','answer','candidate'].includes(d.payload.type)||JSON.stringify(d.payload).length>50000)return fail('Sinal inválido.');this.signals.push({id:++this.serial,room_id:m.room_id,sender:id,recipient:d.to,payload:JSON.stringify(d.payload),created_at:now});return ok({ok:true})}
+  if(path==='signal'){const target=this.members.get(d.to);if(!target||target.room_id!==m.room_id)return fail('Participante desconectado.',409);if(!d.payload||!['offer','answer','candidate','restart'].includes(d.payload.type)||JSON.stringify(d.payload).length>50000)return fail('Sinal inválido.');this.signals.push({id:++this.serial,room_id:m.room_id,sender:id,recipient:d.to,payload:JSON.stringify(d.payload),created_at:now});return ok({ok:true})}
   if(path==='reaction'){if(!['👋','😂','🔥','❤️','🎉','👍'].includes(d.reaction))return fail('Reação inválida.');Object.assign(m,{reaction:d.reaction,reaction_at:now});return ok({ok:true})}
   if(path==='media'){
    const current=this.media.get(m.room_id);if(current?.kind==='screen'&&current.owner_session!==id&&this.members.has(current.owner_session))return fail('Já existe alguém transmitindo.',409);
@@ -237,14 +237,15 @@ function loadPeerLibrary(){return peerLibrary||(peerLibrary=new Promise((resolve
 }))}
 const connectionError=()=>Object.assign(Error('Reconectando a sala. Tente novamente em instantes.'),{status:503});
 class PeerLobby{
- constructor(){this.ownId='edc-'+crypto.randomUUID();this.invite=liveInvite;this.pending=new Map();this.clients=new Map();this.profile=null;this.snapshot=null;this.generation=0;this.authGeneration=-1;this.serial=0;this.ready=false}
+ constructor(){this.ownId='edc-'+crypto.randomUUID();this.invite=liveInvite;this.pending=new Map();this.clients=new Map();this.profile=null;this.snapshot=null;this.generation=0;this.authGeneration=-1;this.serial=0;this.ready=false;this.connectFailures=0;this.nextConnectAt=0}
  async openPeer(id){const Peer=await loadPeerLibrary();return new Promise((resolve,reject)=>{const p=new Peer(id,{debug:0,config:liveIceConfig});let settled=false;const timer=setTimeout(()=>done(Error('O serviço de conexão demorou a responder.')),12000);
  const done=(err)=>{if(settled)return;settled=true;clearTimeout(timer);if(err){p.destroy();reject(err)}else resolve(p)};
  p.on('open',()=>done());p.on('error',err=>{if(!settled)done(err)});p.on('disconnected',()=>{if(!p.destroyed)setTimeout(()=>{try{p.reconnect()}catch{}},1500)});
  })}
  async ensure(){
-  if(this.ready)return;if(this.opening)return this.opening;
-  this.opening=this.connect().finally(()=>{this.opening=null});return this.opening;
+  if(this.ready&&(this.host||this.conn?.open))return;if(this.opening)return this.opening;
+  this.ready=false;if(Date.now()<this.nextConnectAt)throw connectionError();
+  this.opening=this.connect().then(()=>{this.connectFailures=0;this.nextConnectAt=0}).catch(e=>{this.nextConnectAt=Date.now()+Math.min(8000,700*2**Math.min(4,this.connectFailures++))+Math.random()*400;throw e}).finally(()=>{this.opening=null});return this.opening;
  }
  async connect(){
   liveStatus('Conectando a galera…');
@@ -275,16 +276,18 @@ class PeerLobby{
    const result=this.store.handle(conn.peer,message.path,message.data||{},message.query||{});
    if(message.path==='guest'&&result.status===200){authenticated=true;this.clients.set(conn.peer,conn)}
    try{conn.send({type:'reply',id:message.id,result})}catch{}
-   if(authenticated&&result.status===200&&message.path!=='state'&&message.path!=='signal')this.broadcast();
+   if(authenticated&&result.status===200)this.changed(message.path);
   });
   conn.on('close',()=>{if(this.clients.get(conn.peer)===conn){this.clients.delete(conn.peer);this.store.disconnect(conn.peer);this.broadcast()}});
   conn.on('error',()=>{});
  }
+ invalidate(){this.ready=false;const conn=this.conn;this.conn=null;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(connectionError())}this.pending.clear();try{conn?.close()}catch{}liveStatus('Reconectando a sala automaticamente…')}
+ changed(path){if(path==='state'||path==='signal')return;if(path==='heartbeat'){if(!this.snapshotTimer)this.snapshotTimer=setTimeout(()=>{this.snapshotTimer=null;this.broadcast()},1500)}else this.broadcast()}
  broadcast(){if(!this.host)return;const value=this.store.snapshot();this.snapshot=structuredClone(value);for(const c of this.clients.values())if(c.open)try{c.send({type:'snapshot',value})}catch{}}
  raw(path,data,query={}){
-  if(this.host){const result=this.store.handle(this.ownId,path,data,query);if(result.status===200&&path!=='state'&&path!=='signal')this.broadcast();return Promise.resolve(result)}
-  if(!this.conn?.open)return Promise.reject(connectionError());
-  return new Promise((resolve,reject)=>{const id=++this.serial,timer=setTimeout(()=>{this.pending.delete(id);reject(connectionError())},10000);this.pending.set(id,{resolve,reject,timer});try{this.conn.send({type:'rpc',id,path,data,query})}catch{clearTimeout(timer);this.pending.delete(id);reject(connectionError())}});
+  if(this.host){const result=this.store.handle(this.ownId,path,data,query);if(result.status===200)this.changed(path);return Promise.resolve(result)}
+  if(!this.conn?.open){this.invalidate();return Promise.reject(connectionError())}
+  return new Promise((resolve,reject)=>{const id=++this.serial,timer=setTimeout(()=>{this.pending.delete(id);reject(connectionError());this.invalidate()},6500);this.pending.set(id,{resolve,reject,timer});try{this.conn.send({type:'rpc',id,path,data,query})}catch{clearTimeout(timer);this.pending.delete(id);reject(connectionError());this.invalidate()}});
  }
  async call(path,data,query){
   if(!this.profile&&path!=='guest')return {status:401,data:{error:'Escolha seu apelido para entrar.',needsNickname:true}};
@@ -297,7 +300,7 @@ class PeerLobby{
   if(path==='guest'&&result.status===200){this.profile={name:data.name,color:data.color,appearance:data.appearance};this.authGeneration=this.generation}
   return result;
  }
- destroy(){this.ready=false;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(connectionError())}this.pending.clear();this.conn?.close();this.client?.destroy();this.hub?.destroy()}
+ destroy(){clearTimeout(this.snapshotTimer);this.ready=false;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(connectionError())}this.pending.clear();this.conn?.close();this.client?.destroy();this.hub?.destroy()}
 }
 const liveLobby=new PeerLobby(),liveNativeFetch=window.fetch.bind(window);
 window.fetch=async(input,options={})=>{
@@ -1270,6 +1273,58 @@ this.label.textContent='Som das caixas: '+volume+'%'+audioState;this.lastVolume=
  }
 }
 
+// Recovery is driven only by the elected offerer, avoiding simultaneous offers.
+function voiceRecoveryAction(peer,now=Date.now()){
+ const pc=peer.pc;
+ if(pc.connectionState==='closed'||peer.negotiating)return '';
+ if(!peer.offered)return now-(peer.lastOffer||0)>=1500?'offer':'';
+ const age=now-peer.lastOffer;
+ if(pc.signalingState==='have-local-offer'){
+  if(age>=18000)return 'restart';
+  return now-(peer.lastSignalAt||peer.lastOffer)>=3500?'resend':'';
+ }
+ if(peer.forceRestart&&age>=2000)return 'restart';
+ if(pc.connectionState==='connected')return '';
+ if(pc.connectionState==='disconnected'&&now-(peer.disconnectedAt||now)<4500)return '';
+ return age>=Math.min(30000,7000+peer.retries*3500)?'restart':'';
+}
+function summarizeVoiceStats(stats,previous=null){
+ let pair,selected,sent=0,received=0,packets=0,lost=0,jitter=0;
+ const inbound=[];
+ stats.forEach(s=>{
+  if(s.type==='transport'&&s.selectedCandidatePairId)selected=s.selectedCandidatePairId;
+  if(s.type==='candidate-pair'&&s.state==='succeeded'&&(s.selected||s.nominated))pair=s;
+  if((s.kind||s.mediaType)==='audio'){
+   if(s.type==='outbound-rtp')sent+=s.bytesSent||0;
+   if(s.type==='inbound-rtp'){received+=s.bytesReceived||0;packets+=s.packetsReceived||0;lost+=s.packetsLost||0;jitter=Math.max(jitter,s.jitter||0);inbound.push(s.id)}
+  }
+ });
+ pair=stats.get(selected)||pair;
+ const candidate=stats.get(pair?.localCandidateId),remote=stats.get(pair?.remoteCandidateId);
+ const streamKey=inbound.sort().join(',');
+ const comparable=previous?.streamKey===streamKey&&packets>=previous.packets;
+ const delta=comparable?Math.max(0,packets-previous.packets):0;
+ const missing=comparable?Math.max(0,lost-previous.lost):0;
+ return {sent,received,packets,lost,streamKey,jitterMs:Math.round(jitter*1000),
+  loss:delta+missing?100*missing/(delta+missing):null,
+  rttMs:Number.isFinite(pair?.currentRoundTripTime)?Math.round(pair.currentRoundTripTime*1000):null,
+  route:pair?(candidate?.candidateType==='relay'||remote?.candidateType==='relay'?'relay':'direct'):'pending',
+  protocol:candidate?.relayProtocol||candidate?.protocol||''};
+}
+async function prioritizeVoice(peer,participantCount=1){
+ // Preserve browser-generated encodings/transaction IDs. Unsupported hints never block audio.
+ const settings=[[peer.sender,40000,'high'],[peer.screenSender,Math.floor(1800000/Math.max(1,participantCount)),'low'],[peer.screenAudioSender,64000,'medium']];
+ for(const [sender,maxBitrate,priority] of settings){
+  if(!sender?.getParameters||!sender?.setParameters)continue;
+  try{
+   const params=sender.getParameters();if(!params.encodings?.length)continue;
+   params.encodings[0].maxBitrate=maxBitrate;params.encodings[0].priority=priority;
+   if(sender===peer.screenSender)params.encodings[0].maxFramerate=20;
+   await sender.setParameters(params);
+  }catch{}
+ }
+}
+
 // Only the offerer creates media sections. The answerer reuses those from the remote offer.
 function prepareVoiceTransceivers(peer,create=false){
  const pc=peer.pc;
@@ -1344,7 +1399,7 @@ $('#scene').addEventListener('camerachange',updateCameraUI);
 document.addEventListener('click',e=>{const camera=e.target.closest('button[data-camera-mode]');if(camera)scene.setCameraMode(camera.dataset.cameraMode);});
 try{scene.setCameraMode(localStorage.getItem('edc-camera-mode')||'overhead')}catch{}
 updateCameraUI();
-const mediaStage=new MediaStage({scene,session:state.session,publish:data=>request('media',data),onShare:async stream=>{await Promise.all([...state.peers.values()].map(async p=>{await attachVoiceTracks(p,state.stream,stream)}))},toast:msg=>toast(msg)});
+const mediaStage=new MediaStage({scene,session:state.session,publish:data=>request('media',data),onShare:async stream=>{await Promise.all([...state.peers.values()].map(async p=>{await attachVoiceTracks(p,state.stream,stream);await prioritizeVoice(p,state.peers.size)}))},toast:msg=>toast(msg)});
 function toast(msg){$('#toast').textContent=msg;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4200)}
 async function request(path,data){const res=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,session:state.session})});let out;try{out=await res.json()}catch{throw new Error('Sua sessão expirou. Recarregue a página para entrar novamente.')}if(!res.ok)throw Object.assign(new Error(out.error||'Não foi possível concluir. Tente novamente.'),{status:res.status});return out}
 function saveProfile(){try{localStorage.setItem('edc-profile',JSON.stringify(profile))}catch{}updateProfile()}
@@ -1360,7 +1415,7 @@ $('#heading').innerHTML=joined?esc(state.room.name)+'<span>.</span>':'Seu ponto 
 $('#chat-title').textContent=joined?state.room.name:state.channel;document.body.classList.remove('chat-open');document.querySelectorAll('.channel').forEach(b=>b.classList.toggle('active',b.dataset.channel===state.channel));scene.setTheme(state.room?.theme||'office');renderRooms();renderPeople();updateAudioUI();requestAnimationFrame(()=>scene.resize())}
 function updateAudioUI(){scene.footsteps.setMuted(state.deafened);const mic=$('#mic-button');mic.classList.toggle('off',state.muted);mic.innerHTML=svg(state.muted?'mic-off':'mic')+'<small>'+(state.muted?'Mic desligado':'Mic ligado')+'</small>';mic.setAttribute('aria-label',state.muted?'Ativar microfone':'Desativar microfone');const sound=$('#sound-button');sound.classList.toggle('off',state.deafened);sound.setAttribute('aria-label',state.deafened?'Ativar áudio':'Desativar áudio');sound.innerHTML=svg('headphones')+'<small>'+(state.deafened?'Áudio off':'Áudio on')+'</small>'}
 let lastSpatialUpdate=0;
-function updateProximityAudio(){if(!state.room)return;let nearby=0;for(const [id,peer] of state.peers){const member=scene.members.get(id);const placement=member?voicePlacement(scene.listenerPosition(),{x:member.px,z:member.pz},scene.yaw):{gain:0,pan:0};peer.spatial?voiceMixer.update(id,placement,state.deafened):peer.audio.volume=placement.gain;if(peer.pc.connectionState==='connected'&&placement.gain>0)nearby++}const connecting=[...state.peers.values()].some(p=>['new','connecting'].includes(p.pc.connectionState));const label=nearby?'Voz estéreo · '+nearby+' '+(nearby===1?'pessoa perto':'pessoas perto'):connecting?'Conectando voz…':'Voz por proximidade';if($('#voice-state').textContent!==label)$('#voice-state').textContent=label}
+function updateProximityAudio(){if(!state.room)return;let nearby=0;for(const [id,peer] of state.peers){const member=scene.members.get(id);const placement=member?voicePlacement(scene.listenerPosition(),{x:member.px,z:member.pz},scene.yaw):{gain:0,pan:0};peer.spatial?voiceMixer.update(id,placement,state.deafened):peer.audio.volume=placement.gain;if(peer.pc.connectionState==='connected'&&placement.gain>0)nearby++}const connecting=[...state.peers.values()].some(p=>p.pc.connectionState!=='connected');const label=nearby?'Voz estéreo · '+nearby+' '+(nearby===1?'pessoa perto':'pessoas perto'):connecting?'Conectando voz…':'Voz por proximidade';if($('#voice-state').textContent!==label)$('#voice-state').textContent=label}
 function updateSeatUI(){const b=$('[data-action="seat"]');b.textContent=scene.seatId?'Levantar · E':scene.pendingSeat?'Cancelar caminhada · E':'Ir até um banco · E';b.setAttribute('aria-pressed',String(!!scene.seatId));}
 scene.onFrame=time=>{if(time-lastSpatialUpdate>60){lastSpatialUpdate=time;updateProximityAudio();updateSeatUI()}};
 $('#scene').addEventListener('seatchange',()=>{lastHeartbeat=0;updateSeatUI()});
@@ -1378,32 +1433,69 @@ let micPending=false;
 async function toggleMic(){if(!state.room||micPending)return;micPending=true;$('#mic-button').disabled=true;try{await changeMic()}finally{micPending=false;$('#mic-button').disabled=false;updateVoiceCheck()}}
 async function changeMic(){if(!state.room)return;const epoch=state.epoch;
 if(!state.stream){if(!navigator.mediaDevices?.getUserMedia){toast('Este navegador não oferece acesso ao microfone. Use uma conexão HTTPS e um navegador atualizado.');return}
-try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(epoch!==state.epoch||!state.room){stream.getTracks().forEach(t=>t.stop());return}state.stream=stream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{state.muted=true;state.stream=null;updateAudioUI()});for(const p of state.peers.values())await p.sender?.replaceTrack(track);state.muted=false}catch(e){toast(e.name==='NotAllowedError'?'Microfone não autorizado. Permita o acesso nas configurações do navegador.':'Não encontramos um microfone disponível. Verifique o dispositivo.');return}
+try{const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1},echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(epoch!==state.epoch||!state.room){stream.getTracks().forEach(t=>t.stop());return}state.stream=stream;const track=stream.getAudioTracks()[0];track.addEventListener('ended',()=>{state.muted=true;state.stream=null;updateAudioUI()});for(const p of state.peers.values()){await p.sender?.replaceTrack(track);await prioritizeVoice(p,state.peers.size)}state.muted=false}catch(e){toast(e.name==='NotAllowedError'?'Microfone não autorizado. Permita o acesso nas configurações do navegador.':'Não encontramos um microfone disponível. Verifique o dispositivo.');return}
 }else{state.muted=!state.muted;state.stream.getAudioTracks().forEach(t=>t.enabled=!state.muted)}
 updateAudioUI();lastHeartbeat=0;poll()}
 function toggleSound(){state.deafened=!state.deafened;mediaStage.deafened=state.deafened;mediaStage.applyVolume();for(const p of state.peers.values())p.audio.muted=p.spatial||state.deafened;updateProximityAudio();updateAudioUI()}
-async function sendSignal(to,payload){if(!state.room)return;await request('signal',{to,payload});const peer=state.peers.get(to);if(peer)peer.lastSent=payload.type}
+async function sendSignal(to,payload){if(!state.room)return;await request('signal',{to,payload});const peer=state.peers.get(to);if(peer){peer.lastSent=payload.type;if(payload.type==='offer')peer.lastSignalAt=Date.now()}}
 function getPeer(id){
 let peer=state.peers.get(id);if(peer)return peer;
-const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]});const audio=document.createElement('audio');audio.volume=0;audio.autoplay=true;audio.muted=state.deafened;document.body.append(audio);
-peer={pc,audio,videoTrack:null,screenAudioTrack:null,candidates:[],offered:false,retries:0,lastOffer:0,created:Date.now()};state.peers.set(id,peer);prepareVoiceTransceivers(peer,state.session<id);attachVoiceTracks(peer,state.stream,mediaStage.stream).catch(e=>{peer.lastError=e.message});
-pc.onicecandidate=e=>{if(e.candidate)sendSignal(id,{type:'candidate',candidate:e.candidate.toJSON()}).catch(()=>{})};
+const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}],bundlePolicy:'max-bundle'});const audio=document.createElement('audio');audio.volume=0;audio.autoplay=true;audio.muted=state.deafened;document.body.append(audio);
+peer={pc,audio,videoTrack:null,screenAudioTrack:null,candidates:[],outgoingCandidates:[],offered:false,retries:0,lastOffer:0,created:Date.now()};state.peers.set(id,peer);prepareVoiceTransceivers(peer,state.session<id);attachVoiceTracks(peer,state.stream,mediaStage.stream).catch(e=>{peer.lastError=e.message});
+pc.onicecandidate=e=>{if(e.candidate&&state.peers.get(id)===peer){peer.outgoingCandidates.push(e.candidate.toJSON());flushVoiceCandidates(id,peer)}};
 pc.ontrack=e=>{const role=voiceTrackRole(peer,e.transceiver);if(role==='screen'){peer.videoTrack=e.track;mediaStage.attachRemote(id,e.track);return}if(role==='screen-audio'){peer.screenAudioTrack=e.track;mediaStage.attachRemote(id,e.track);return}audio.srcObject=new MediaStream([e.track]);peer.spatial=voiceMixer.add(id,audio.srcObject);audio.muted=peer.spatial||state.deafened;updateProximityAudio();audio.play().catch(()=>toast('Clique em Áudio para liberar a reprodução da conversa.'))};
-pc.onconnectionstatechange=()=>{renderPeople();updateProximityAudio();if(pc.connectionState==='failed')toast('Tentando reconectar a voz. Se não voltar, use outra rede ou entre novamente.');};return peer}
+pc.onconnectionstatechange=()=>{if(state.peers.get(id)!==peer)return;if(pc.connectionState==='disconnected')peer.disconnectedAt=Date.now();if(pc.connectionState==='connected'){peer.retries=0;peer.forceRestart=false;peer.lastError='';prioritizeVoice(peer,state.peers.size)}renderPeople();updateProximityAudio()};return peer}
+async function flushVoiceCandidates(id,p){
+ if(p.sendingCandidates)return;p.sendingCandidates=true;
+ try{while(p.outgoingCandidates.length&&state.peers.get(id)===p){await sendSignal(id,{type:'candidate',candidate:p.outgoingCandidates[0]});p.outgoingCandidates.shift()}}catch(e){p.lastError=e.message}finally{p.sendingCandidates=false}
+}
+async function negotiateVoice(id,p){
+ const action=voiceRecoveryAction(p);if(!action)return;p.negotiating=true;
+ try{
+  if(action==='resend'){await sendSignal(id,{type:'offer',sdp:p.pc.localDescription.sdp});return}
+  const restart=p.offered;p.offered=true;p.lastOffer=Date.now();p.forceRestart=false;if(restart)p.retries++;
+  if(p.pc.signalingState==='have-local-offer')await p.pc.setLocalDescription({type:'rollback'});
+  await attachVoiceTracks(p,state.stream,mediaStage.stream);
+  await p.pc.setLocalDescription(await p.pc.createOffer({iceRestart:restart}));
+  if(state.peers.get(id)!==p)return;
+  await sendSignal(id,{type:'offer',sdp:p.pc.localDescription.sdp});
+ }catch(e){p.lastError=e.message;if(p.pc.signalingState==='stable')p.offered=false}finally{p.negotiating=false}
+}
 async function syncPeers(members,signals){
 if(!state.room||!window.RTCPeerConnection)return;const epoch=state.epoch,ids=new Set(members.filter(m=>m.room_id===state.room.id&&m.id!==state.session).map(m=>m.id));for(const id of [...state.peers.keys()])if(!ids.has(id))closePeer(id);
-for(const id of ids){const p=getPeer(id);if(state.session<id&&(!p.offered||p.pc.connectionState==='failed'&&p.retries<3&&Date.now()-p.lastOffer>8000)){const restart=p.offered;p.offered=true;p.lastOffer=Date.now();if(restart)p.retries++;try{await attachVoiceTracks(p,state.stream,mediaStage.stream);await p.pc.setLocalDescription(await p.pc.createOffer({iceRestart:restart}));if(epoch!==state.epoch)return;await sendSignal(id,{type:'offer',sdp:p.pc.localDescription.sdp})}catch(e){p.offered=false;p.lastError=e.message}}}
-for(const signal of signals){if(epoch!==state.epoch)return;state.signalCursor=Math.max(state.signalCursor,signal.id);if(!ids.has(signal.sender))continue;try{const data=JSON.parse(signal.payload),p=getPeer(signal.sender);p.lastReceived=data.type;
-if(data.type==='offer'){await p.pc.setRemoteDescription({type:'offer',sdp:data.sdp});prepareVoiceTransceivers(p);await attachVoiceTracks(p,state.stream,mediaStage.stream);for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c);await p.pc.setLocalDescription(await p.pc.createAnswer());await sendSignal(signal.sender,{type:'answer',sdp:p.pc.localDescription.sdp})}
-else if(data.type==='answer'&&p.pc.signalingState==='have-local-offer'){await p.pc.setRemoteDescription({type:'answer',sdp:data.sdp});for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c)}
-else if(data.type==='candidate'){if(p.pc.remoteDescription)await p.pc.addIceCandidate(data.candidate);else p.candidates.push(data.candidate)}
-}catch(e){const p=state.peers.get(signal.sender);if(p)p.lastError=e.message;if(state.room)$('#voice-state').textContent='Verificando conexão de voz…'}}}
+for(const id of ids){const p=getPeer(id);if(p.mediaPeerCount!==ids.size){p.mediaPeerCount=ids.size;await prioritizeVoice(p,ids.size)}}
+for(const signal of signals){
+ if(epoch!==state.epoch)return;state.signalCursor=Math.max(state.signalCursor,signal.id);if(!ids.has(signal.sender))continue;
+ try{const data=JSON.parse(signal.payload),p=getPeer(signal.sender);p.lastReceived=data.type;
+ if(data.type==='restart'){if(state.session<signal.sender)p.forceRestart=true}
+ else if(data.type==='offer'){
+  // A repeated offer is an acknowledgement retry; answer again without replacing live tracks.
+  if(p.pc.remoteDescription?.sdp===data.sdp&&p.pc.signalingState==='stable'&&p.pc.localDescription?.type==='answer'){await sendSignal(signal.sender,{type:'answer',sdp:p.pc.localDescription.sdp});continue}
+  await p.pc.setRemoteDescription({type:'offer',sdp:data.sdp});prepareVoiceTransceivers(p);
+  await attachVoiceTracks(p,state.stream,mediaStage.stream);
+  for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c).catch(()=>{});
+  await p.pc.setLocalDescription(await p.pc.createAnswer());
+  await sendSignal(signal.sender,{type:'answer',sdp:p.pc.localDescription.sdp});await prioritizeVoice(p,ids.size)
+ }else if(data.type==='answer'&&p.pc.signalingState==='have-local-offer'){
+  await p.pc.setRemoteDescription({type:'answer',sdp:data.sdp});
+  for(const c of p.candidates.splice(0))await p.pc.addIceCandidate(c).catch(()=>{});
+  await prioritizeVoice(p,ids.size)
+ }else if(data.type==='candidate'){if(p.pc.remoteDescription)await p.pc.addIceCandidate(data.candidate);else if(p.candidates.length<100)p.candidates.push(data.candidate)}
+ }catch(e){const p=state.peers.get(signal.sender);if(p)p.lastError=e.message}
+}
+await Promise.all([...ids].map(async id=>{const p=state.peers.get(id);if(!p||epoch!==state.epoch)return;await flushVoiceCandidates(id,p);if(state.session<id)await negotiateVoice(id,p)}));
+}
+async function reconnectVoice(){
+ if(!state.room)return;
+ for(const [id,p] of state.peers){p.forceRestart=true;p.retries=0;if(state.session>id)sendSignal(id,{type:'restart'}).catch(e=>{p.lastError=e.message})}
+ lastHeartbeat=0;poll();toast('Buscando a conexão de voz novamente. Seu microfone continua como estava.');
+}
 async function poll(){
 if(busy)return;busy=true;const epoch=state.epoch;
-try{if(state.room&&!state.joining&&Date.now()-lastHeartbeat>2000){await request('heartbeat',{...profile,...scene.position,seat_id:scene.seatId,muted:state.muted});lastHeartbeat=Date.now()}
+try{if(state.room&&!state.joining&&Date.now()-lastHeartbeat>2000){try{await request('heartbeat',{...profile,...scene.position,seat_id:scene.seatId,muted:state.muted})}catch(e){if(e.status!==409||epoch!==state.epoch)throw e;await request('join',{room:state.room.id,...profile});if(epoch!==state.epoch)return;await request('heartbeat',{...profile,...scene.position,muted:state.muted});for(const [id,p] of state.peers){p.forceRestart=true;if(state.session>id)sendSignal(id,{type:'restart'}).catch(()=>{})}toast('Conexão recuperada. Você continua na sala.')}lastHeartbeat=Date.now()}
 const res=await fetch('/api/state?channel='+encodeURIComponent(state.channel)+'&session='+encodeURIComponent(state.session)+'&after='+state.signalCursor,{cache:'no-store'});if(!res.ok){let err;try{err=await res.json()}catch{}throw Object.assign(new Error(err?.error||'Conexão indisponível.'),{status:res.status})}
 const data=await res.json();if(epoch!==state.epoch)return;state.authenticated=true;$('.app').inert=false;if(data.user.name){profile={name:data.user.name,color:data.user.color,appearance:normalizeAvatar(data.user.appearance??profile.appearance)};saveProfile()}state.connectionDebug=data.connection;state.lastSignalCount=data.signals?.length||0;state.online=true;state.rooms=data.rooms;state.members=data.members;$('#online-count').textContent=data.members.length?'Na voz: '+data.members.length:'A casa é sua';renderRooms();renderPeople();renderMessages(data.messages);await syncPeers(data.members,data.signals);mediaStage.sync(data.media,data.server_time||Date.now());for(const [id,p] of state.peers){if(p.videoTrack)mediaStage.attachRemote(id,p.videoTrack);if(p.screenAudioTrack)mediaStage.attachRemote(id,p.screenAudioTrack)}updateProximityAudio();
-}catch(e){state.online=false;$('#online-count').textContent='Reconectando…';if(e.status===423){scene.stand();toast('Esse lugar acabou de ser ocupado. Escolha outro banco.')}else if(e.status===409&&state.room){await leave(false);toast(e.message)}else if(e.status===401){state.authenticated=false;$('.app').inert=true;$('#online-count').textContent='Escolha seu apelido';if(!$('#modal').open)showProfile()}else if(!lastMessageKey){$('#messages').innerHTML='<div class="empty-chat">'+svg('signal')+'<b>Conectando ao escritório…</b><p>'+esc(e.message)+'</p></div>'}}finally{busy=false;clearTimeout(pollTimer);if(state.authenticated||!$('#modal').open)pollTimer=setTimeout(poll,state.room?1100:3500)}}
+}catch(e){state.online=false;$('#online-count').textContent='Reconectando…';if(e.status===423){scene.stand();toast('Esse lugar acabou de ser ocupado. Escolha outro banco.')}else if(e.status===409&&state.room){toast(e.message)}else if(e.status===401){state.authenticated=false;$('.app').inert=true;$('#online-count').textContent='Escolha seu apelido';if(!$('#modal').open)showProfile()}else if(!lastMessageKey){$('#messages').innerHTML='<div class="empty-chat">'+svg('signal')+'<b>Conectando ao escritório…</b><p>'+esc(e.message)+'</p></div>'}}finally{busy=false;clearTimeout(pollTimer);if(state.authenticated||!$('#modal').open)pollTimer=setTimeout(poll,state.room?600:3500)}}
 let avatarPreview=null;
 function modal(html){avatarPreview?.dispose();avatarPreview=null;$('#modal').classList.remove('avatar-dialog');$('#modal-content').innerHTML=html;icons($('#modal'));if(!$('#modal').open)$('#modal').showModal()}
 function showEntryProfile(){profileColor=profile.color;modal('<span class="modal-emblem">'+svg('shirt')+'</span><div class="eyebrow" style="margin-top:20px">SUA IDENTIDADE NA FIRMA</div><h2>Como a galera te chama?</h2><p>Sem conta, sem senha. Só o apelido que a galera conhece.</p><form id="profile-form"><label for="nickname">Seu apelido</label><input id="nickname" value="'+esc(profile.name)+'" maxlength="24" placeholder="Ex.: David" required autocomplete="nickname"><div '+(!state.authenticated?'hidden':'')+'><label>A cor do seu avatar</label><div class="color-choices">'+palette.map(c=>'<button type="button" class="color-choice '+(profileColor===c?'chosen':'')+'" data-color="'+c+'" style="background:'+c+'" aria-label="Cor '+c+'"></button>').join('')+'</div></div><p class="field-note">Você pode personalizar seu avatar depois de entrar.</p><p class="modal-error" id="profile-error"></p><button class="primary" type="submit">'+(!state.authenticated?'Entrar no escritório':pendingJoin?'Entrar na sala 3D':'Salvar meu perfil')+' '+svg('check')+'</button></form>');$('.modal-close').hidden=!state.authenticated;setTimeout(()=>$('#nickname')?.focus(),50)}
@@ -1418,19 +1510,20 @@ document.addEventListener("change",e=>{if(e.target.closest(".avatar-editor"))ref
 document.addEventListener("click",e=>{const button=e.target.closest("[data-avatar-preset]");if(!button)return;const form=$("#profile-form");for(const [key,value] of Object.entries(AVATAR_PRESETS[button.dataset.avatarPreset]||{})){const field=form.elements.namedItem(key);if(!field)continue;if(field.type==="checkbox")field.checked=value;else field.value=value}refreshAvatarPreview()});
 async function showInvite(){try{const res=await fetch('/api/invite');if(!res.ok)throw new Error('Entre com um apelido antes de convidar.');activeInvite=(await res.json()).invite;modal('<span class="modal-emblem">'+svg('user-plus')+'</span><h2>Chama os de casa.</h2><p>Quem abrir seu convite escolhe um apelido e já pode entrar.</p><label for="invite-link">Link de convite</label><input id="invite-link" readonly value="'+esc(invitationUrl())+'"><p class="field-note">Compartilhe com seus amigos. Qualquer pessoa com este convite pode entrar e criar canais.</p><button class="primary" data-action="copy-invite">'+svg('copy')+' Copiar convite</button>')}catch(e){toast(e.message)}}
 function showCreate(){modal('<span class="modal-emblem">'+svg('plus')+'</span><h2>Mais um canto pra galera.</h2><p>Toda sala de voz já vem com seu ambiente 3D.</p><form id="room-form"><label for="room-name">Nome da sala</label><input id="room-name" required minlength="3" maxlength="32" placeholder="Ex.: A diretoria"><label for="room-description">Descrição</label><input id="room-description" maxlength="80" placeholder="Qual é a boa por aqui?"><label for="room-theme">Clima do ambiente</label><select id="room-theme"><option value="office">Comunidade · fim de tarde</option><option value="gaming">Comunidade · noite</option><option value="lounge">Laje do pôr do sol · tons quentes</option></select><p class="modal-error" id="room-error"></p><button class="primary" type="submit">Criar sala '+svg('plus')+'</button></form>')}
-function showVoiceCheck(){modal('<span class="modal-emblem">'+svg('headphones')+'</span><h2>Conferir a voz.</h2><p>Ative o microfone e chegue perto da galera. Use fones para evitar eco.</p><div id="voice-check-panel"><p id="voice-check-mic"></p><div id="voice-check-peers"></div></div><p class="field-note">O acesso ao microfone é pedido pelo navegador. Se uma conexão não abrir, tente outra rede.</p><button class="primary" data-action="mic">Ligar / desligar microfone</button>');updateVoiceCheck()}
+function showVoiceCheck(){modal('<span class="modal-emblem">'+svg('headphones')+'</span><h2>Conferir a voz.</h2><p>Ative o microfone e chegue perto da galera. Use fones para evitar eco.</p><div id="voice-check-panel"><p id="voice-check-mic"></p><div id="voice-check-peers"></div></div><p class="field-note">A voz tenta se recuperar automaticamente. Redes que bloqueiam conexão direta precisam de um servidor de retransmissão (TURN), ainda não configurado.</p><button class="primary" data-action="mic">Ligar / desligar microfone</button><button class="primary" style="margin-top:8px" data-action="reconnect-voice">Reconectar voz</button>');updateVoiceCheck()}
 async function updateVoiceCheck(){
 const panel=$('#voice-check-panel');if(!panel||!$('#modal').open)return;
 $('#voice-check-mic').textContent=state.stream&&!state.muted?'Microfone ligado · '+(state.stream.getAudioTracks()[0]?.label||'Dispositivo padrão'):'Microfone desligado';
 const rows=[];
 for(const [id,p] of state.peers){
- let sent=0,received=0,statsError='';
- try{const stats=await p.pc.getStats();stats.forEach(s=>{if((s.kind||s.mediaType)==='audio'){if(s.type==='outbound-rtp')sent+=s.bytesSent||0;if(s.type==='inbound-rtp')received+=s.bytesReceived||0}})}catch(e){statsError=e.message}
- const person=state.members.find(m=>m.id===id),status=p.pc.connectionState==='connected'?'Conectado':p.pc.connectionState==='failed'?'Conexão indisponível':'Conectando';
+ let sent=0,received=0,statsError='',health=null;
+ try{const stats=await p.pc.getStats();health=summarizeVoiceStats(stats,p.statsSample);p.statsSample=health;sent=health.sent;received=health.received}catch(e){statsError=e.message}
+ const person=state.members.find(m=>m.id===id),status=p.pc.connectionState==='connected'?'Conectado':['failed','disconnected'].includes(p.pc.connectionState)?'Reconectando automaticamente':'Conectando';
+ const quality=health?((health.route==='relay'?'Via retransmissor':health.route==='direct'?'Rota direta':'Procurando rota')+(health.protocol?' · '+health.protocol.toUpperCase():'')+(health.rttMs!==null?' · Atraso '+health.rttMs+' ms':'')+(health.loss!==null?' · Perda '+health.loss.toFixed(1)+'%':'')+' · Variação '+health.jitterMs+' ms'):'';
  const detail='Sinais: '+(state.lastSignalCount||0)+' · Fila: '+(state.connectionDebug?.waiting??'?')+' · Total: '+(state.connectionDebug?.stored??'?')+' · Sessão: '+(state.connectionDebug?.sessionFound??'?')+' · Cursor: '+state.signalCursor+' · Consulta: '+(state.connectionDebug?.after??'?')+' · Conexão: '+p.pc.connectionState+' · Rede: '+p.pc.iceConnectionState+' · Negociação: '+p.pc.signalingState+' · Enviado: '+(p.lastSent||'nenhum')+' · Recebido: '+(p.lastReceived||'nenhum');
  const tracks=p.pc.getTransceivers().map(t=>(t.mid||'?')+': '+t.receiver.track.kind+' '+(t.currentDirection||'pendente')+' '+(t.sender.track?.readyState||'sem microfone')).join(' · ');
  const opened=document.querySelector('details[data-voice-peer="'+id+'"]')?.open;
- rows.push('<div><p><b>'+esc(person?.name||'Participante')+'</b> · '+status+'<br><small>'+(sent?'Áudio enviado':'Aguardando envio')+' · '+(received?'Áudio recebido':'Aguardando áudio')+'</small></p><details data-voice-peer="'+id+'" '+(opened?'open':'')+'><summary>Detalhes da conexão</summary><small>'+esc(detail)+'<br>'+esc(tracks)+'<br>'+Math.round(sent/1024)+' KB enviados · '+Math.round(received/1024)+' KB recebidos'+(p.lastError?'<br>'+esc(p.lastError):'')+(statsError?'<br>'+esc(statsError):'')+'</small></details></div>');
+ rows.push('<div><p><b>'+esc(person?.name||'Participante')+'</b> · '+status+'<br><small>'+esc(quality)+'<br>'+(sent?'Áudio enviado':'Aguardando envio')+' · '+(received?'Áudio recebido':'Aguardando áudio')+'</small></p><details data-voice-peer="'+id+'" '+(opened?'open':'')+'><summary>Detalhes da conexão</summary><small>'+esc(detail)+'<br>'+esc(tracks)+'<br>'+Math.round(sent/1024)+' KB enviados · '+Math.round(received/1024)+' KB recebidos'+(p.lastError?'<br>'+esc(p.lastError):'')+(statsError?'<br>'+esc(statsError):'')+'</small></details></div>');
 }
 if(panel.isConnected)$('#voice-check-peers').innerHTML=rows.join('')||'<p>Você está sozinho na sala. Envie o convite para testar com um amigo.</p>';
 }
@@ -1464,6 +1557,7 @@ case 'zoom-in':scene.setZoom(scene.zoom+.12);break;
 case 'zoom-out':scene.setZoom(scene.zoom-.12);break;
 case 'reset-camera':scene.reset();break;
 case 'voice-check':showVoiceCheck();break;
+case 'reconnect-voice':await reconnectVoice();break;
 case 'mic':await toggleMic();break;
 case 'sound':toggleSound();if(!state.deafened)for(const p of state.peers.values())p.audio.play().catch(()=>{});break;
 case 'leave':await leave();poll();break;
@@ -1482,5 +1576,7 @@ $('#modal').addEventListener('close',()=>{avatarPreview?.dispose();avatarPreview
 $('#modal').addEventListener('cancel',e=>{if(!state.authenticated)e.preventDefault();else pendingJoin=null});
 window.addEventListener('pagehide',()=>{if(state.room){fetch('/api/leave',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:state.session}),keepalive:true}).catch(()=>{});stopMedia()}});
 setInterval(()=>{$('#clock').textContent=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}).format(new Date());if(state.room){const secs=Math.floor((Date.now()-state.joinedAt)/1000);$('#call-duration').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0')}},1000);
+window.addEventListener('online',()=>{lastHeartbeat=0;poll()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastHeartbeat=0;poll()}});
 updateProfile();renderRooms();updateRoomUI();poll();
 </script></body></html>
